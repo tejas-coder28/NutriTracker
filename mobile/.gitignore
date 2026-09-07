@@ -1,0 +1,60 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# Dependencies
+node_modules/
+
+# Expo & Web builds
+.expo/
+dist/
+build/
+web-build/
+expo-env.d.ts
+
+# Environment variables & Sensitive configs
+.env
+.env.*
+!.env.example
+android/app/google-services.json
+ios/App/App/GoogleService-Info.plist
+
+# Android & Capacitor native build output & IDE files
+android/app/build/
+android/build/
+android/.gradle/
+android/.idea/
+android/captures/
+android/local.properties
+android/*.iml
+android/app/*.iml
+
+# iOS native build output
+ios/App/build/
+ios/App/Pods/
+ios/DerivedData/
+
+# Native keys & certificates
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# Metro & Logs
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+
+# System & IDEs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/
+
+# TypeScript
+*.tsbuildinfo

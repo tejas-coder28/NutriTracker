@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment files & secrets
+.env
+.env.*
+!.env.example
+**/android/app/google-services.json
+**/ios/App/App/GoogleService-Info.plist
+
+# Build outputs & Expo
+dist/
+build/
+web-build/
+.expo/
+**/dist/
+**/build/
+**/web-build/
+**/.expo/
+**/android/app/build/
+**/android/build/
+**/android/.gradle/
+**/android/.idea/
+
+# System & IDEs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/
+*.log

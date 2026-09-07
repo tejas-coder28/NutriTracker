@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">NutriTracker AI</string>
+    <string name="title_activity_main">NutriTracker AI</string>
+    <string name="package_name">com.nutritracker.app</string>
+    <string name="custom_url_scheme">com.nutritracker.app</string>
+</resources>

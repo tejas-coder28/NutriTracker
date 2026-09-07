@@ -1,0 +1,31 @@
+rules_version = '2';
+
+// NutriTracker AI — Firestore Security Rules
+//
+// Each authenticated user can only read and write their own data.
+// Data is structured as:
+//   /users/{uid}                   — profile document
+//   /users/{uid}/food_logs/{id}   — food log entries
+//   /users/{uid}/workout_logs/{id}
+//   /users/{uid}/weight_logs/{id}
+//   /users/{uid}/water_logs/{date}
+//   /users/{uid}/favorites/{id}
+//   /users/{uid}/custom_presets/{id}
+//
+// HOW TO DEPLOY:
+//   Option A (Firebase Console):
+//     1. Go to Firestore → Rules tab
+//     2. Replace the content with everything below the "service" block
+//     3. Click Publish
+//
+//   Option B (Firebase CLI):
+//     firebase deploy --only firestore:rules
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Each user can only access their own subtree
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
