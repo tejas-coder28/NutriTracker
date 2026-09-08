@@ -1,0 +1,24 @@
+{
+  "name": "nutritracker-ai",
+  "version": "1.0.0",
+  "description": "> **Intelligent AI-Powered Nutrition, Macro & Workout Companion**  \r > Built with Expo, React Native, Firebase, and Google Gemini Multimodal AI.",
+  "main": "screenshot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tejas-coder28/NutriTracker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/tejas-coder28/NutriTracker/issues"
+  },
+  "homepage": "https://github.com/tejas-coder28/NutriTracker#readme",
+  "dependencies": {
+    "puppeteer": "^25.10.0"
+  }
+}
