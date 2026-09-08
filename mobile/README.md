@@ -26,7 +26,7 @@
 
 ### 📍 Table of Contents
 
-[📌 Overview](#-overview) • [🌟 Key Features](#-key-features) • [🛠️ Technology Stack](#-technology-stack) • [📁 Directory Structure](#-directory-structure) • [🚀 Getting Started](#-getting-started) • [📜 NPM Scripts](#-npm-scripts) • [🔒 Security & Privacy](#-security--privacy) • [🤝 Contributing](#-contributing) • [📬 Contact & Support](#-contact--support) • [📄 License](#-license)
+[📌 Overview](#-overview) • [📱 App Preview](#-app-preview) • [🌟 Key Features](#-key-features) • [🛠️ Technology Stack](#-technology-stack) • [📁 Directory Structure](#-directory-structure) • [🚀 Getting Started](#-getting-started) • [📜 NPM Scripts](#-npm-scripts) • [🔒 Security & Privacy](#-security--privacy) • [🤝 Contributing](#-contributing) • [📬 Contact & Support](#-contact--support) • [📄 License](#-license)
 
 </div>
 
@@ -37,6 +37,82 @@
 **NutriTracker AI** is a state-of-the-art mobile and web application designed to simplify diet tracking, macro calculations, workout logging, and fitness progress monitoring. Using Google Gemini 3.x vision & natural language models, NutriTracker AI eliminates manual entry hassle by instantly analyzing meal photos or plain text descriptions, identifying individual ingredients/dishes with portion estimates, and calculating exact macronutrients (calories, protein, carbs, fat, fiber).
 
 Whether your goal is **Fat Loss**, **Lean Muscle Gain (Bulking)**, or **Maintenance**, NutriTracker AI uses scientifically validated formulas (Mifflin-St Jeor) to build personalized targets with safety floors, rate recommendations, interactive trend projections, and real-time AI smart nudges.
+
+---
+
+## 📱 App Preview
+
+### 🔐 Authentication & Setup
+
+<table align="center">
+  <tr>
+    <td align="center" width="33%">
+      <img src="assets/screenshots/login.png" alt="Login Screen" width="200px" /><br />
+      <sub><b>Login Screen</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="assets/screenshots/register.png" alt="Registration Form" width="200px" /><br />
+      <sub><b>Registration Form</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="assets/screenshots/onboarding.png" alt="Onboarding Setup Wizard" width="200px" /><br />
+      <sub><b>Onboarding Wizard</b></sub>
+    </td>
+  </tr>
+</table>
+
+### 📊 Dashboard & Food Logging
+
+<table align="center">
+  <tr>
+    <td align="center" width="33%">
+      <img src="assets/screenshots/dashboard.png" alt="Home Dashboard" width="200px" /><br />
+      <sub><b>Home Dashboard</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="assets/screenshots/addfood.png" alt="Add Food Modal" width="200px" /><br />
+      <sub><b>Add Food Modal</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="assets/screenshots/foodlog.png" alt="Food Diary Log" width="200px" /><br />
+      <sub><b>Food Diary Log</b></sub>
+    </td>
+  </tr>
+</table>
+
+### 🏋️ Workout & Weight Tracking
+
+<table align="center">
+  <tr>
+    <td align="center" width="33%">
+      <img src="assets/screenshots/addworkout.png" alt="Log Workout Modal" width="200px" /><br />
+      <sub><b>Log Workout Modal</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="assets/screenshots/workoutlog.png" alt="Workout Log History" width="200px" /><br />
+      <sub><b>Workout History</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="assets/screenshots/weightlog.png" alt="Log Weight Modal" width="200px" /><br />
+      <sub><b>Log Weight Modal</b></sub>
+    </td>
+  </tr>
+</table>
+
+### 📈 Progress Analytics & Profile
+
+<table align="center">
+  <tr>
+    <td align="center" width="50%">
+      <img src="assets/screenshots/progress.png" alt="Progress & Analytics" width="200px" /><br />
+      <sub><b>Progress Analytics</b></sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="assets/screenshots/profile.png" alt="User Profile & Settings" width="200px" /><br />
+      <sub><b>Profile & Settings</b></sub>
+    </td>
+  </tr>
+</table>
 
 ---
 

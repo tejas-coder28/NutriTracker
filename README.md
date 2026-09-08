@@ -11,6 +11,82 @@
 
 ---
 
+## 📱 App Preview
+
+### 🔐 Authentication & Setup
+
+<table align="center">
+  <tr>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screenshots/login.png" alt="Login Screen" width="200px" /><br />
+      <sub><b>Login Screen</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screenshots/register.png" alt="Registration Form" width="200px" /><br />
+      <sub><b>Registration Form</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screenshots/onboarding.png" alt="Onboarding Setup Wizard" width="200px" /><br />
+      <sub><b>Onboarding Wizard</b></sub>
+    </td>
+  </tr>
+</table>
+
+### 📊 Dashboard & Food Logging
+
+<table align="center">
+  <tr>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screenshots/dashboard.png" alt="Home Dashboard" width="200px" /><br />
+      <sub><b>Home Dashboard</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screenshots/addfood.png" alt="Add Food Modal" width="200px" /><br />
+      <sub><b>Add Food Modal</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screenshots/foodlog.png" alt="Food Diary Log" width="200px" /><br />
+      <sub><b>Food Diary Log</b></sub>
+    </td>
+  </tr>
+</table>
+
+### 🏋️ Workout & Weight Tracking
+
+<table align="center">
+  <tr>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screenshots/addworkout.png" alt="Log Workout Modal" width="200px" /><br />
+      <sub><b>Log Workout Modal</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screenshots/workoutlog.png" alt="Workout Log History" width="200px" /><br />
+      <sub><b>Workout History</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screenshots/weightlog.png" alt="Log Weight Modal" width="200px" /><br />
+      <sub><b>Log Weight Modal</b></sub>
+    </td>
+  </tr>
+</table>
+
+### 📈 Progress Analytics & Profile
+
+<table align="center">
+  <tr>
+    <td align="center" width="50%">
+      <img src="mobile/assets/screenshots/progress.png" alt="Progress & Analytics" width="200px" /><br />
+      <sub><b>Progress Analytics</b></sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="mobile/assets/screenshots/profile.png" alt="User Profile & Settings" width="200px" /><br />
+      <sub><b>Profile & Settings</b></sub>
+    </td>
+  </tr>
+</table>
+
+---
+
 ## 🚀 Workspace Structure
 
 ```
