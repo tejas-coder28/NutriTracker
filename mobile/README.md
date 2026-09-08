@@ -1,7 +1,34 @@
+<div align="center">
+
 # 🥗 NutriTracker AI
+
+```
+  _   _       _ ri _____                   _               _    _____ 
+ | \ | |     | | |_   _|                 | |             | |  |  ___|
+ |  \| |_   _| |_  | |_ __ __ _  ___ | | _____ _ __ / \  | |   
+ | . ` | | | | __| | | '__/ _` |/ __| | |/ / _ \ '__/ _ \ | |   
+ | |\  | |_| | |_  | | | | (_| | (__|   <  __/\__ \ ___ \| |   
+ |_| \_|\__,_|\__| \_/_|  \__,_|\___|_|\_\___|_|/_/   \_|_|   
+```
 
 > **Your Intelligent AI-Powered Nutrition, Macro & Workout Companion**  
 > Powered by Expo, React Native, Firebase, and Google Gemini Multimodal AI.
+
+<br />
+
+[![React Native](https://img.shields.io/badge/React_Native-0.79.6-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactnative.dev/)
+[![Expo SDK](https://img.shields.io/badge/Expo_SDK-53.0.27-000000?style=for-the-badge&logo=expo&logoColor=white)](https://expo.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20Android%20%7C%20Web-blue?style=for-the-badge)](https://expo.dev/)
+[![Made with Gemini](https://img.shields.io/badge/Made%20with-Google%20Gemini%20AI-8E75B2?style=for-the-badge&logo=google&logoColor=white)](https://aistudio.google.com/)
+
+<br />
+
+### 📍 Table of Contents
+
+[📌 Overview](#-overview) • [📱 App Preview](#-app-preview) • [🌟 Key Features](#-key-features) • [🛠️ Technology Stack](#-technology-stack) • [📁 Directory Structure](#-directory-structure) • [🚀 Getting Started](#-getting-started) • [📜 NPM Scripts](#-npm-scripts) • [🔒 Security & Privacy](#-security--privacy) • [🤝 Contributing](#-contributing) • [📬 Contact & Support](#-contact--support) • [📄 License](#-license)
+
+</div>
 
 ---
 
@@ -13,56 +40,134 @@ Whether your goal is **Fat Loss**, **Lean Muscle Gain (Bulking)**, or **Maintena
 
 ---
 
+## 📱 App Preview
+
+<table align="center">
+  <tr>
+    <td align="center" width="33%">
+      <img src="assets/screenshots/home.png" alt="Home Dashboard" width="100%" /><br />
+      <sub><b>Home Dashboard</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="assets/screenshots/foodlog.png" alt="AI Meal Scanner" width="100%" /><br />
+      <sub><b>AI Meal Scanner</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="assets/screenshots/progress.png" alt="Progress Analytics" width="100%" /><br />
+      <sub><b>Progress Analytics</b></sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="33%">
+      <img src="assets/screenshots/onboarding.png" alt="Onboarding Flow" width="100%" /><br />
+      <sub><b>Onboarding Flow</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="assets/screenshots/workout.png" alt="Workout Logger" width="100%" /><br />
+      <sub><b>Workout Logger</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="assets/screenshots/summary.png" alt="Weekly Summary" width="100%" /><br />
+      <sub><b>Weekly Summary</b></sub>
+    </td>
+  </tr>
+</table>
+
+<details>
+<summary>📸 How to capture & regenerate screenshots</summary>
+
+* **iOS Simulator**: Press <kbd>Cmd</kbd> + <kbd>S</kbd> or click the camera icon in the simulator toolbar.
+* **Android Emulator**: Click the 📷 Camera icon on the emulator sidebar or run `adb shell screencap -p /sdcard/screen.png && adb pull /sdcard/screen.png`.
+* **Physical Device**: Use standard screenshot shortcuts on your device or Expo CLI tools. Save `.png` files directly to `mobile/assets/screenshots/`.
+</details>
+
+---
+
 ## 🌟 Key Features
 
-### 📸 1. Multimodal AI Meal Logging
+<details>
+<summary><strong>📸 1. Multimodal AI Meal Logging</strong></summary>
+<br />
+
 * **Photo Scanning**: Snap a picture of any meal. Google Gemini identifies food items, estimates total and per-item portion weights in grams or piece counts (e.g., 2 Rotis @ 40g each + 300g Chicken Breast), and computes full macro breakdowns.
 * **Natural Language Text Logging**: Describe meals in plain text (e.g., *"3 egg whites, 2 slices of whole wheat toast with peanut butter"*), and get instant itemized nutritional parsing.
 * **Smart Model Fallback System**: Seamless multi-tiered model failover (`gemini-3.1-flash-lite` ➔ `gemini-3.5-flash-lite` ➔ `gemini-3-flash` ➔ etc.) with automatic rate-limit (429) & service overload (503) handling.
 * **Itemized Portion Editing**: Adjust serving quantities, piece counts, gram weights, and macros for every individual component within a logged meal.
 
-### 🎯 2. Precision Macro Engine & Pace Customization
+</details>
+
+<details>
+<summary><strong>🎯 2. Precision Macro Engine & Pace Customization</strong></summary>
+<br />
+
 * **Mifflin-St Jeor Formula**: Calculates exact Basal Metabolic Rate (BMR) and Total Daily Energy Expenditure (TDEE) based on age, gender, height, weight, and activity level.
 * **Goal-Tailored Targets**: Protein targeted at `2.0g / kg`, Fats at `25%` total calories, Fiber at `14g per 1000 kcal`, with Carbs absorbing remaining energy.
 * **Safety Deficit Clamping**: Protects user health by enforcing minimum calorie floors (1200 kcal/day for females, 1500 kcal/day for males) and warning against unsafe deficit rates.
 * **Interactive Weight Rate Options**: Visual cards presenting options from gradual (0.25 kg/wk) to aggressive (1.0 kg/wk) with projected target achievement dates and trendlines.
 
-### 🤖 3. Real-Time Smart AI Coach Nudges
+</details>
+
+<details>
+<summary><strong>🤖 3. Real-Time Smart AI Coach Nudges</strong></summary>
+<br />
+
 * Dynamic dashboard card generating personalized, 1-sentence actionable advice based on current time of day, net calorie status, workout logs, water intake, and personal fitness goals.
 
-### 🏋️ 4. Workout & MET Calorie Burn Tracker
+</details>
+
+<details>
+<summary><strong>🏋️ 4. Workout & MET Calorie Burn Tracker</strong></summary>
+<br />
+
 * Log activities across multiple exercise types (Walking, Running, Cycling, Swimming, Weight Training, Yoga, HIIT, Sports).
 * Accurate calorie burn estimation using Metabolic Equivalent of Task (MET) values tailored to intensity and body weight.
 * Convenient 1-tap quick preset workouts.
 
-### 💧 5. Hydration & Streak Gamification
+</details>
+
+<details>
+<summary><strong>💧 5. Hydration & Streak Gamification</strong></summary>
+<br />
+
 * Daily water intake widget with progress tracking against personalized goals.
 * Streak tracking system rewarding daily completion of both nutrition and workout logging.
 * Unlockable milestone badges (3-Day Spark, 7-Day Warrior, 14-Day Machine, 30-Day Master, 60-Day Titan, 100-Day Legend).
 
-### 📊 6. Analytics & Excel Export
+</details>
+
+<details>
+<summary><strong>📊 6. Analytics & Excel Export</strong></summary>
+<br />
+
 * Interactive weight trend charts and workout calorie burn visualizers.
 * Weekly summary modal with performance score, compliance rate, and net energy balance.
 * **1-Click Excel Export**: Download or share a full `.xlsx` report (`{Username}_report.xlsx`) containing formatted date, meal type, food names, gram estimates, macros, and logging source using `xlsx` and `expo-sharing`.
 
-### 🔒 7. Cloud Sync & Security
+</details>
+
+<details>
+<summary><strong>🔒 7. Cloud Sync & Security</strong></summary>
+<br />
+
 * Multi-platform authentication via Firebase (Email/Password & Native Google Sign-In).
 * Cloud Firestore integration ensuring real-time sync across devices.
 * Biometric Authentication (Face ID / Fingerprint) & PIN lock protection options.
+
+</details>
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Layer | Technology |
-| :--- | :--- |
-| **Framework** | [React Native](https://reactnative.dev/) `0.79.6`, [Expo SDK](https://expo.dev/) `53.0.27`, [Expo Router](https://docs.expo.dev/router/introduction/) `5.1.11` |
-| **AI Integration** | [@google/genai](https://www.npmjs.com/package/@google/genai) (Google Gemini 3.x Multimodal APIs) |
-| **Authentication** | [Firebase Auth](https://firebase.google.com/docs/auth), [@capacitor-firebase/authentication](https://github.com/capawesome-team/capacitor-plugins) |
-| **Database & Cloud** | [Firebase Cloud Firestore](https://firebase.google.com/docs/firestore), [Expo SQLite](https://docs.expo.dev/versions/latest/sdk/sqlite/) |
-| **UI & Styling** | Expo Vector Icons, React Native Reanimated, Expo Glass Effect, Custom Dark/Light Design Tokens |
-| **Native Bridge** | [Capacitor](https://capacitorjs.com/) `8.5.0` (Android & iOS Native Layer) |
-| **Reporting** | SheetJS `xlsx`, Expo FileSystem, Expo Sharing |
+| Layer | Technology | Why |
+| :--- | :--- | :--- |
+| **Framework** | [React Native](https://reactnative.dev/) `0.79.6`, [Expo SDK](https://expo.dev/) `53.0.27`, [Expo Router](https://docs.expo.dev/router/introduction/) `5.1.11` | High-performance cross-platform app development with file-based routing and instant Metro bundling |
+| **AI Integration** | [@google/genai](https://www.npmjs.com/package/@google/genai) (Google Gemini 3.x Multimodal APIs) | Multimodal vision & natural language processing for instant food recognition and nutritional parsing |
+| **Authentication** | [Firebase Auth](https://firebase.google.com/docs/auth), [@capacitor-firebase/authentication](https://github.com/capawesome-team/capacitor-plugins) | Production-grade authentication supporting Email/Password and native Google Sign-In |
+| **Database & Cloud** | [Firebase Cloud Firestore](https://firebase.google.com/docs/firestore), [Expo SQLite](https://docs.expo.dev/versions/latest/sdk/sqlite/) | Real-time multi-device cloud synchronization paired with fast local offline caching |
+| **UI & Styling** | Expo Vector Icons, React Native Reanimated, Expo Glass Effect, Custom Dark/Light Design Tokens | Smooth 60fps animations, modern glassmorphism UI, and adaptive light/dark theme tokens |
+| **Native Bridge** | [Capacitor](https://capacitorjs.com/) `8.5.0` (Android & iOS Native Layer) | Native container bridge for building and deploying to iOS and Android devices |
+| **Reporting** | SheetJS `xlsx`, Expo FileSystem, Expo Sharing | Zero-backend client-side generation and native sharing of formatted `.xlsx` macro reports |
 
 ---
 
@@ -115,45 +220,52 @@ mobile/
 
 ## 🚀 Getting Started
 
+> **⚡ Quick Start (Experienced Developers)**  
+> ```bash
+> cd mobile && npm install && cp .env.example .env && npx expo start
+> ```
+
 ### Prerequisites
 
 * **Node.js** `v18+` or `v20+`
 * **npm** or **yarn**
 * **Expo Go** app on your iOS/Android device OR an Android Emulator / iOS Simulator
 
-### 1. Clone & Install Dependencies
+### Step-by-Step Setup
 
-```bash
-# Navigate to the mobile project directory
-cd mobile
+1. **Clone & Install Dependencies**
 
-# Install dependencies
-npm install
-```
+   ```bash
+   # Navigate to the mobile project directory
+   cd mobile
 
-### 2. Configure Environment Variables
+   # Install dependencies
+   npm install
+   ```
 
-Create a `.env` file inside the `mobile/` directory based on `.env.example`:
+2. **Configure Environment Variables**
 
-```env
-# On-Device Gemini API Key (Get yours from Google AI Studio: https://aistudio.google.com)
-EXPO_PUBLIC_GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
-```
+   Create a `.env` file inside the `mobile/` directory based on `.env.example`:
 
-*(Optional)* Configure your Firebase credentials in `src/config/firebase.js` if deploying your own Cloud Firestore backend.
+   ```env
+   # On-Device Gemini API Key (Get yours from Google AI Studio: https://aistudio.google.com)
+   EXPO_PUBLIC_GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
+   ```
 
-### 3. Start Development Server
+   *(Optional)* Configure your Firebase credentials in `src/config/firebase.js` if deploying your own Cloud Firestore backend.
 
-```bash
-# Start the Expo development server
-npx expo start
-```
+3. **Start Development Server**
 
-From the terminal prompt, you can:
-* Press `a` to launch on **Android Emulator**
-* Press `i` to launch on **iOS Simulator**
-* Press `w` to launch in **Web Browser**
-* Scan the QR code with **Expo Go** on your mobile device
+   ```bash
+   # Start the Expo development server
+   npx expo start
+   ```
+
+   From the terminal prompt, you can:
+   * Press `a` to launch on **Android Emulator**
+   * Press `i` to launch on **iOS Simulator**
+   * Press `w` to launch in **Web Browser**
+   * Scan the QR code with **Expo Go** on your mobile device
 
 ---
 
@@ -178,7 +290,34 @@ From the terminal prompt, you can:
 
 ---
 
-## 📄 License
+## 🤝 Contributing
+
+Contributions are welcome! If you'd like to improve NutriTracker AI, please follow these steps:
+
+1. **Fork the Repository** — Create your own fork on GitHub.
+2. **Create a Feature Branch** — `git checkout -b feature/amazing-feature`
+3. **Commit Your Changes** — `git commit -m 'Add amazing feature'`
+4. **Push to the Branch** — `git push origin feature/amazing-feature`
+5. **Open a Pull Request** — Submit a PR for review detailing your enhancements.
+
+---
+
+## 📬 Contact / Support
+
+Have questions, suggestions, or feedback? Reach out to us:
+
+* **Issues & Bugs**: [Submit an Issue](https://github.com/your-username/NutriTracker-AI/issues)
+* **Discussions**: [Join GitHub Discussions](https://github.com/your-username/NutriTracker-AI/discussions)
+* **Email Support**: [support@nutritracker.ai](mailto:support@nutritracker.ai)
+
+---
+
+<div align="center">
+
+### 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+</div>
