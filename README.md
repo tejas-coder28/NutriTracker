@@ -11,6 +11,41 @@
 
 ---
 
+## 📱 App Preview
+
+<table align="center">
+  <tr>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screenshots/home.png" alt="Home Dashboard" width="100%" /><br />
+      <sub><b>Home Dashboard</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screenshots/foodlog.png" alt="AI Meal Scanner" width="100%" /><br />
+      <sub><b>AI Meal Scanner</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screenshots/progress.png" alt="Progress Analytics" width="100%" /><br />
+      <sub><b>Progress Analytics</b></sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screenshots/onboarding.png" alt="Onboarding Flow" width="100%" /><br />
+      <sub><b>Onboarding Flow</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screenshots/workout.png" alt="Workout Logger" width="100%" /><br />
+      <sub><b>Workout Logger</b></sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screenshots/summary.png" alt="Weekly Summary" width="100%" /><br />
+      <sub><b>Weekly Summary</b></sub>
+    </td>
+  </tr>
+</table>
+
+---
+
 ## 🚀 Workspace Structure
 
 ```
