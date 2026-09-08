@@ -26,7 +26,7 @@
 
 ### 📍 Table of Contents
 
-[📌 Overview](#-overview) • [📱 App Preview](#-app-preview) • [🌟 Key Features](#-key-features) • [🛠️ Technology Stack](#-technology-stack) • [📁 Directory Structure](#-directory-structure) • [🚀 Getting Started](#-getting-started) • [📜 NPM Scripts](#-npm-scripts) • [🔒 Security & Privacy](#-security--privacy) • [🤝 Contributing](#-contributing) • [📬 Contact & Support](#-contact--support) • [📄 License](#-license)
+[📌 Overview](#-overview) • [🌟 Key Features](#-key-features) • [🛠️ Technology Stack](#-technology-stack) • [📁 Directory Structure](#-directory-structure) • [🚀 Getting Started](#-getting-started) • [📜 NPM Scripts](#-npm-scripts) • [🔒 Security & Privacy](#-security--privacy) • [🤝 Contributing](#-contributing) • [📬 Contact & Support](#-contact--support) • [📄 License](#-license)
 
 </div>
 
@@ -37,49 +37,6 @@
 **NutriTracker AI** is a state-of-the-art mobile and web application designed to simplify diet tracking, macro calculations, workout logging, and fitness progress monitoring. Using Google Gemini 3.x vision & natural language models, NutriTracker AI eliminates manual entry hassle by instantly analyzing meal photos or plain text descriptions, identifying individual ingredients/dishes with portion estimates, and calculating exact macronutrients (calories, protein, carbs, fat, fiber).
 
 Whether your goal is **Fat Loss**, **Lean Muscle Gain (Bulking)**, or **Maintenance**, NutriTracker AI uses scientifically validated formulas (Mifflin-St Jeor) to build personalized targets with safety floors, rate recommendations, interactive trend projections, and real-time AI smart nudges.
-
----
-
-## 📱 App Preview
-
-<table align="center">
-  <tr>
-    <td align="center" width="33%">
-      <img src="assets/screenshots/home.png" alt="Home Dashboard" width="100%" /><br />
-      <sub><b>Home Dashboard</b></sub>
-    </td>
-    <td align="center" width="33%">
-      <img src="assets/screenshots/foodlog.png" alt="AI Meal Scanner" width="100%" /><br />
-      <sub><b>AI Meal Scanner</b></sub>
-    </td>
-    <td align="center" width="33%">
-      <img src="assets/screenshots/progress.png" alt="Progress Analytics" width="100%" /><br />
-      <sub><b>Progress Analytics</b></sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="33%">
-      <img src="assets/screenshots/onboarding.png" alt="Onboarding Flow" width="100%" /><br />
-      <sub><b>Onboarding Flow</b></sub>
-    </td>
-    <td align="center" width="33%">
-      <img src="assets/screenshots/workout.png" alt="Workout Logger" width="100%" /><br />
-      <sub><b>Workout Logger</b></sub>
-    </td>
-    <td align="center" width="33%">
-      <img src="assets/screenshots/summary.png" alt="Weekly Summary" width="100%" /><br />
-      <sub><b>Weekly Summary</b></sub>
-    </td>
-  </tr>
-</table>
-
-<details>
-<summary>📸 How to capture & regenerate screenshots</summary>
-
-* **iOS Simulator**: Press <kbd>Cmd</kbd> + <kbd>S</kbd> or click the camera icon in the simulator toolbar.
-* **Android Emulator**: Click the 📷 Camera icon on the emulator sidebar or run `adb shell screencap -p /sdcard/screen.png && adb pull /sdcard/screen.png`.
-* **Physical Device**: Use standard screenshot shortcuts on your device or Expo CLI tools. Save `.png` files directly to `mobile/assets/screenshots/`.
-</details>
 
 ---
 
