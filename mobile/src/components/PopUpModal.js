@@ -1,20 +1,21 @@
 import React from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, Modal, Platform } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import Icon from './ui/Icon';
+import LiquidButton from './primitives/LiquidButton';
 
 export default function PopUpModal({ visible, title, message, icon = 'checkmark-circle', type = 'success', onClose }) {
-  const { isDark, themeColors, glassStyles } = useTheme();
+  const { isDark, tokens } = useTheme();
   if (!visible) return null;
 
   const iconColors = {
-    success: '#10B981',
-    info: '#3B82F6',
-    warning: '#F59E0B',
-    danger: '#EF4444'
+    success: tokens.semantics.success,
+    info: tokens.semantics.info,
+    warning: tokens.semantics.warning,
+    danger: tokens.semantics.danger,
   };
 
-  const accentColor = iconColors[type] || '#10B981';
+  const accentColor = iconColors[type] || tokens.primary;
 
   return (
     <Modal
@@ -23,22 +24,49 @@ export default function PopUpModal({ visible, title, message, icon = 'checkmark-
       visible={visible}
       onRequestClose={onClose}
     >
-      <View style={[styles.overlay, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.75)' : 'rgba(0, 0, 0, 0.4)' }]}>
-        <View style={[glassStyles.modalContent, styles.modalCard, { borderColor: `${accentColor}50` }]}>
-          <View style={[styles.iconRing, { backgroundColor: `${accentColor}18`, borderColor: `${accentColor}40` }]}>
-            <Ionicons name={icon} size={36} color={accentColor} />
+      <View style={[styles.overlay, { backgroundColor: isDark ? 'rgba(4, 4, 6, 0.75)' : 'rgba(15, 23, 42, 0.45)' }]}>
+        <View
+          style={[
+            styles.modalCard,
+            {
+              backgroundColor: tokens.liquidGlass.fill,
+              borderColor: accentColor,
+              ...(Platform.OS === 'web' ? {
+                backdropFilter: `blur(${tokens.liquidGlass.blur}px)`,
+                WebkitBackdropFilter: `blur(${tokens.liquidGlass.blur}px)`,
+                boxShadow: isDark
+                  ? `0 20px 60px rgba(0, 0, 0, 0.8), 0 0 30px ${accentColor}33`
+                  : '0 16px 48px rgba(15, 23, 42, 0.18)',
+              } : {}),
+            },
+          ]}
+        >
+          <View style={[styles.iconRing, { backgroundColor: `${accentColor}20`, borderColor: `${accentColor}40` }]}>
+            <Icon name={icon} size={34} color={accentColor} />
           </View>
 
-          <Text style={[styles.title, { color: themeColors.textPrimary }]}>{title || 'Success'}</Text>
-          {message ? <Text style={[styles.message, { color: themeColors.textSecondary }]}>{message}</Text> : null}
-
-          <TouchableOpacity
-            style={[styles.closeBtn, { backgroundColor: accentColor }]}
-            onPress={onClose}
-            activeOpacity={0.8}
+          <Text
+            allowFontScaling={true}
+            maxFontSizeMultiplier={1.3}
+            style={[styles.title, { color: tokens.text.primary, fontFamily: 'PlusJakartaSans_700Bold' }]}
           >
-            <Text style={styles.closeBtnText}>Done</Text>
-          </TouchableOpacity>
+            {title || 'Success'}
+          </Text>
+          {message ? (
+            <Text
+              allowFontScaling={true}
+              maxFontSizeMultiplier={1.3}
+              style={[styles.message, { color: tokens.text.secondary, fontFamily: 'PlusJakartaSans_500Medium' }]}
+            >
+              {message}
+            </Text>
+          ) : null}
+
+          <LiquidButton
+            onPress={onClose}
+            title="Done"
+            style={{ width: '100%', backgroundColor: accentColor }}
+          />
         </View>
       </View>
     </Modal>
@@ -57,8 +85,8 @@ const styles = StyleSheet.create({
     maxWidth: 380,
     borderRadius: 24,
     padding: 24,
+    borderWidth: 1,
     alignItems: 'center',
-    borderWidth: 1.5,
   },
   iconRing: {
     width: 68,
@@ -66,32 +94,19 @@ const styles = StyleSheet.create({
     borderRadius: 34,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1.5,
     marginBottom: 16,
-    borderWidth: 1,
   },
   title: {
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: '700',
     textAlign: 'center',
     marginBottom: 8,
-    letterSpacing: -0.3,
   },
   message: {
     fontSize: 14,
-    textAlign: 'center',
     lineHeight: 20,
+    textAlign: 'center',
     marginBottom: 20,
-  },
-  closeBtn: {
-    width: '100%',
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  closeBtnText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
   },
 });

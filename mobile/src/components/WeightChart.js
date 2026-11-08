@@ -1,26 +1,39 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import Svg, { Path, Circle, Line, Text as SvgText } from 'react-native-svg';
+import Svg, { Path, Circle, Line, Text as SvgText, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useTheme } from '../context/ThemeContext';
+import GlassCard from './primitives/GlassCard';
 
-const screenWidth = Dimensions.get('window').width - 40;
+const screenWidth = Math.min(480, Dimensions.get('window').width - 32);
 
 export default function WeightChart({ logs = [], targetWeight = null, projectedTrend = [], height = 220 }) {
-  const { isDark, themeColors, glassStyles } = useTheme();
+  const { tokens, isDark } = useTheme();
 
   if (!logs || logs.length === 0) {
     return (
-      <View style={[glassStyles.cardSubtle, styles.emptyContainer, { height }]}>
-        <Text style={[styles.emptyText, { color: themeColors.textPrimary }]}>No weight logs recorded yet.</Text>
-        <Text style={[styles.emptySubtext, { color: themeColors.textSecondary }]}>Tap "+ Log Weight" to start tracking your weight trajectory.</Text>
-      </View>
+      <GlassCard subtle style={[styles.emptyContainer, { height }]}>
+        <Text
+          allowFontScaling={true}
+          maxFontSizeMultiplier={1.3}
+          style={[styles.emptyText, { color: tokens.text.primary }]}
+        >
+          No weight logs recorded yet.
+        </Text>
+        <Text
+          allowFontScaling={true}
+          maxFontSizeMultiplier={1.3}
+          style={[styles.emptySubtext, { color: tokens.text.secondary }]}
+        >
+          Tap "+ Log Weight" to start tracking your weight trajectory.
+        </Text>
+      </GlassCard>
     );
   }
 
-  const paddingLeft = 40;
+  const paddingLeft = 48;
   const paddingRight = 20;
   const paddingTop = 25;
-  const paddingBottom = 35;
+  const paddingBottom = 38;
 
   const chartWidth = screenWidth - paddingLeft - paddingRight;
   const chartHeight = height - paddingTop - paddingBottom;
@@ -46,13 +59,19 @@ export default function WeightChart({ logs = [], targetWeight = null, projectedT
 
   // Build SVG path string for actual weight data points
   let pathD = '';
+  let areaD = '';
   logs.forEach((log, index) => {
     const x = getX(index);
     const y = getY(log.weight);
     if (index === 0) {
       pathD += `M ${x} ${y}`;
+      areaD += `M ${x} ${paddingTop + chartHeight} L ${x} ${y}`;
     } else {
       pathD += ` L ${x} ${y}`;
+      areaD += ` L ${x} ${y}`;
+    }
+    if (index === logs.length - 1) {
+      areaD += ` L ${x} ${paddingTop + chartHeight} Z`;
     }
   });
 
@@ -71,10 +90,21 @@ export default function WeightChart({ logs = [], targetWeight = null, projectedT
   }
 
   const targetY = targetWeight ? getY(targetWeight) : null;
+  const actualLineColor = tokens.primary;
+  const projectedLineColor = tokens.macros.carbs;
+  const targetLineColor = tokens.macros.protein;
 
   return (
     <View style={styles.container}>
       <Svg width={screenWidth} height={height}>
+        <Defs>
+          {/* Area gradient under actual weight curve */}
+          <LinearGradient id="weightAreaGrad" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor={actualLineColor} stopOpacity={isDark ? "0.35" : "0.22"} />
+            <Stop offset="100%" stopColor={actualLineColor} stopOpacity="0.0" />
+          </LinearGradient>
+        </Defs>
+
         {/* Horizontal grid lines */}
         {[0, 0.5, 1].map((ratio, i) => {
           const yVal = minWeight + ratio * range;
@@ -86,15 +116,16 @@ export default function WeightChart({ logs = [], targetWeight = null, projectedT
                 y1={yPos}
                 x2={screenWidth - paddingRight}
                 y2={yPos}
-                stroke={isDark ? "#27272A" : "#E4E4E7"}
+                stroke={tokens.neumorphic.border}
                 strokeWidth="1"
                 strokeDasharray="4 4"
               />
               <SvgText
                 x={paddingLeft - 8}
                 y={yPos + 4}
-                fill={themeColors.textSecondary}
-                fontSize="10"
+                fill={tokens.text.secondary}
+                fontSize="12"
+                fontFamily="SpaceGrotesk_600SemiBold"
                 textAnchor="end"
               >
                 {Math.round(yVal * 10) / 10}kg
@@ -111,16 +142,17 @@ export default function WeightChart({ logs = [], targetWeight = null, projectedT
               y1={targetY}
               x2={screenWidth - paddingRight}
               y2={targetY}
-              stroke="#10B981"
+              stroke={targetLineColor}
               strokeWidth="1.5"
               strokeDasharray="6 3"
             />
             <SvgText
               x={screenWidth - paddingRight}
               y={targetY - 6}
-              fill="#10B981"
-              fontSize="10"
+              fill={targetLineColor}
+              fontSize="12"
               fontWeight="bold"
+              fontFamily="PlusJakartaSans_700Bold"
               textAnchor="end"
             >
               Target: {targetWeight}kg
@@ -133,10 +165,18 @@ export default function WeightChart({ logs = [], targetWeight = null, projectedT
           <Path
             d={projPathD}
             fill="none"
-            stroke="#F59E0B"
+            stroke={projectedLineColor}
             strokeWidth="2"
             strokeDasharray="4 4"
             strokeLinecap="round"
+          />
+        )}
+
+        {/* Area fill under actual weight */}
+        {areaD !== '' && (
+          <Path
+            d={areaD}
+            fill="url(#weightAreaGrad)"
           />
         )}
 
@@ -145,7 +185,7 @@ export default function WeightChart({ logs = [], targetWeight = null, projectedT
           <Path
             d={pathD}
             fill="none"
-            stroke="#6366F1"
+            stroke={actualLineColor}
             strokeWidth="3"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -163,16 +203,17 @@ export default function WeightChart({ logs = [], targetWeight = null, projectedT
                 cx={x}
                 cy={y}
                 r="5"
-                fill="#6366F1"
-                stroke={isDark ? "#18181B" : "#FFFFFF"}
+                fill={actualLineColor}
+                stroke={tokens.bg}
                 strokeWidth="2"
               />
               {(logs.length <= 7 || index % Math.ceil(logs.length / 5) === 0 || index === logs.length - 1) && (
                 <SvgText
                   x={x}
-                  y={height - 10}
-                  fill={themeColors.textSecondary}
-                  fontSize="9"
+                  y={height - 8}
+                  fill={tokens.text.secondary}
+                  fontSize="12"
+                  fontFamily="SpaceGrotesk_500Medium"
                   textAnchor="middle"
                 >
                   {dateStr}
@@ -185,19 +226,19 @@ export default function WeightChart({ logs = [], targetWeight = null, projectedT
 
       <View style={styles.legendRow}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#6366F1' }]} />
-          <Text style={[styles.legendText, { color: themeColors.textSecondary }]}>Actual Weight</Text>
+          <View style={[styles.legendDot, { backgroundColor: actualLineColor }]} />
+          <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.legendText, { color: tokens.text.secondary }]}>Actual</Text>
         </View>
         {projPathD !== '' && (
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
-            <Text style={[styles.legendText, { color: themeColors.textSecondary }]}>Projected Trend</Text>
+            <View style={[styles.legendDot, { backgroundColor: projectedLineColor }]} />
+            <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.legendText, { color: tokens.text.secondary }]}>Projected</Text>
           </View>
         )}
         {targetWeight && (
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
-            <Text style={[styles.legendText, { color: themeColors.textSecondary }]}>Target Goal</Text>
+            <View style={[styles.legendDot, { backgroundColor: targetLineColor }]} />
+            <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.legendText, { color: tokens.text.secondary }]}>Target</Text>
           </View>
         )}
       </View>
@@ -211,24 +252,26 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   emptyContainer: {
-    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    width: '100%',
   },
   emptyText: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
   },
   emptySubtext: {
-    fontSize: 12,
+    fontSize: 13,
+    fontFamily: 'PlusJakartaSans_500Medium',
     marginTop: 4,
     textAlign: 'center',
   },
   legendRow: {
     flexDirection: 'row',
     gap: 16,
-    marginTop: 8,
+    marginTop: 10,
   },
   legendItem: {
     flexDirection: 'row',
@@ -241,6 +284,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   legendText: {
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
   },
 });

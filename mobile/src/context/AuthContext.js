@@ -158,7 +158,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ── Google Sign-In ─────────────────────────────────────────────────────────
-  const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
+  const GOOGLE_WEB_CLIENT_ID = '659175129139-bupep3j5v236kp1qf876c1pf4qr1jq5t.apps.googleusercontent.com';
 
   /**
    * On native Android/iOS: Uses @capacitor-firebase/authentication to trigger the

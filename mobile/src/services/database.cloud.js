@@ -29,10 +29,6 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { getLocalDateStr, isFutureDate } from '../utils/dateUtils';
-import { compressFoodPhoto, getBase64SizeBytes } from './storageService';
-
-// Firestore field string limit (~1 MB decoded). We cap at 800 KB to be safe.
-const FIRESTORE_IMAGE_MAX_DECODED_BYTES = 800 * 1024;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -128,34 +124,6 @@ export async function insertFoodLog(entry) {
   if (isFutureDate(loggedAt)) throw new Error('Cannot log entries for future dates.');
 
   const uid = getUid();
-
-  let finalImagePath = entry.image_path || null;
-  if (finalImagePath && typeof finalImagePath === 'string') {
-    try {
-      finalImagePath = await compressFoodPhoto(finalImagePath);
-    } catch (compressErr) {
-      console.error('[insertFoodLog] Photo compression error:', compressErr);
-      throw new Error(compressErr.message || 'Photo too large, please try a smaller image.');
-    }
-
-    // Hard guard: reject if still over Firestore limit after compression
-    if (finalImagePath) {
-      const decodedBytes = getBase64SizeBytes(finalImagePath);
-      const base64Bytes = finalImagePath.length;
-      console.log(
-        `[insertFoodLog] Final image size BEFORE Firestore save: ` +
-        `decoded=${(decodedBytes / 1024).toFixed(1)} KB, ` +
-        `base64 string length=${(base64Bytes / 1024).toFixed(1)} KB`
-      );
-      if (decodedBytes > FIRESTORE_IMAGE_MAX_DECODED_BYTES) {
-        throw new Error(
-          `Compressed photo is still ${(decodedBytes / 1024).toFixed(0)} KB (limit: 800 KB). ` +
-          'Please use a smaller image.'
-        );
-      }
-    }
-  }
-
   const newLog = {
     name: entry.name,
     meal_type: entry.meal_type || 'snack',
@@ -165,7 +133,7 @@ export async function insertFoodLog(entry) {
     carbs: entry.carbs || 0,
     fat: entry.fat || 0,
     fiber: entry.fiber || 0,
-    image_path: finalImagePath,
+    image_path: entry.image_path || null,
     source: entry.source || 'text',
     items: entry.items || null,
     logged_at: loggedAt,
@@ -179,30 +147,7 @@ export async function insertFoodLog(entry) {
 export async function updateFoodLog(id, updates) {
   const uid = getUid();
   const ref = subDoc(uid, 'food_logs', id);
-
-  const cleanUpdates = stripUndefined(updates);
-  if (cleanUpdates.image_path && typeof cleanUpdates.image_path === 'string') {
-    try {
-      cleanUpdates.image_path = await compressFoodPhoto(cleanUpdates.image_path);
-    } catch (compressErr) {
-      console.error('[updateFoodLog] Photo compression error:', compressErr);
-      throw new Error(compressErr.message || 'Photo too large, please try a smaller image.');
-    }
-
-    // Hard guard before Firestore write
-    if (cleanUpdates.image_path) {
-      const decodedBytes = getBase64SizeBytes(cleanUpdates.image_path);
-      console.log(`[updateFoodLog] Final image size BEFORE save: decoded=${(decodedBytes / 1024).toFixed(1)} KB`);
-      if (decodedBytes > FIRESTORE_IMAGE_MAX_DECODED_BYTES) {
-        throw new Error(
-          `Compressed photo is still ${(decodedBytes / 1024).toFixed(0)} KB (limit: 800 KB). ` +
-          'Please use a smaller image.'
-        );
-      }
-    }
-  }
-
-  await updateDoc(ref, cleanUpdates);
+  await updateDoc(ref, stripUndefined(updates));
   const snap = await getDoc(ref);
   return snap.exists() ? { id, ...snap.data() } : null;
 }

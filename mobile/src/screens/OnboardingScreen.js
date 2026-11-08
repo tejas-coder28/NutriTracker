@@ -7,18 +7,21 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Platform
+  Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { getRateOptionsPreview } from '../services/macroCalculator';
 import PopUpModal from '../components/PopUpModal';
 import AmbientBackground from '../components/AmbientBackground';
+import GlassCard from '../components/primitives/GlassCard';
+import LiquidButton from '../components/primitives/LiquidButton';
+import NeuInset from '../components/primitives/NeuInset';
+import Icon from '../components/ui/Icon';
 
 export default function OnboardingScreen() {
   const { user, updateUserProfile, logout } = useAuth();
-  const { isDark, themeColors, glassStyles } = useTheme();
+  const { isDark, tokens } = useTheme();
   const [loading, setLoading] = useState(false);
 
   // Profile Form States
@@ -41,7 +44,7 @@ export default function OnboardingScreen() {
     title: '',
     message: '',
     icon: 'checkmark-circle',
-    type: 'success'
+    type: 'success',
   });
 
   const currW = parseFloat(weight) || 75;
@@ -98,26 +101,34 @@ export default function OnboardingScreen() {
     if (!isFormValid) return;
     try {
       setLoading(true);
-      await updateUserProfile({
+      const res = await updateUserProfile({
         name: name.trim(),
-        age: parseInt(age),
+        age: parseInt(age) || 25,
         gender,
-        height: parseFloat(height),
-        weight: parseFloat(weight),
-        target_weight: parseFloat(targetWeight),
+        height: parseFloat(height) || 175,
+        weight: currW,
+        target_weight: targW,
         activity_level: activityLevel,
         goal_type: autoGoalType,
-        fat_loss_rate: parseFloat(fatLossRate),
+        fat_loss_rate: parseFloat(fatLossRate) || 0.5,
         water_goal: Math.max(1, parseInt(waterGoal) || 8),
-        has_completed_onboarding: true,
+      });
+
+      const newCal = res?.calculated?.target_calories || user?.target_calories || 2000;
+      setModalConfig({
+        visible: true,
+        title: 'Welcome to NutriTracker AI! 🥑',
+        message: `Your personalized nutrition profile has been calculated (${newCal} kcal/day target). Let's start tracking!`,
+        icon: 'sparkles',
+        type: 'success',
       });
     } catch (err) {
       setModalConfig({
         visible: true,
-        title: 'Setup Failed',
-        message: err.message || 'Unable to save profile attributes.',
+        title: 'Save Failed',
+        message: err.message || 'Unable to save your onboarding setup.',
         icon: 'alert-circle',
-        type: 'danger'
+        type: 'danger',
       });
     } finally {
       setLoading(false);
@@ -126,320 +137,375 @@ export default function OnboardingScreen() {
 
   return (
     <AmbientBackground style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <PopUpModal
-          visible={modalConfig.visible}
-          title={modalConfig.title}
-          message={modalConfig.message}
-          icon={modalConfig.icon}
-          type={modalConfig.type}
-          onClose={() => setModalConfig({ ...modalConfig, visible: false })}
-        />
+      <PopUpModal
+        visible={modalConfig.visible}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        icon={modalConfig.icon}
+        type={modalConfig.type}
+        onClose={() => setModalConfig({ ...modalConfig, visible: false })}
+      />
 
-        {/* Onboarding Welcome Header */}
-        <View style={styles.header}>
-          <View style={[styles.badge, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.35)' }]}>
-            <Ionicons name="sparkles" size={26} color="#10B981" />
-          </View>
-          <Text style={[styles.title, { color: themeColors.textPrimary }]}>Welcome to NutriTrack AI 👋</Text>
-          <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>
-            Step 1 of 1 • Complete your physical profile to calculate personalized daily calorie and macro targets.
-          </Text>
-        </View>
-
-        {/* Mandatory Setup Info Notice */}
-        <View style={[styles.noticeBanner, { backgroundColor: 'rgba(16, 185, 129, 0.12)', borderColor: 'rgba(16, 185, 129, 0.3)' }]}>
-          <Ionicons name="information-circle-outline" size={20} color="#10B981" />
-          <Text style={[styles.noticeText, { color: themeColors.textPrimary }]}>
-            Required Setup: All physical attributes and fat loss pace must be filled to unlock your personalized dashboard.
-          </Text>
-        </View>
-
-        {/* Account Info & Physical Attributes Card */}
-        <View style={[glassStyles.card, styles.sectionCard]}>
-          <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Account & Physical Attributes</Text>
-
-          {/* Email Address Read-Only Field */}
-          <View style={styles.fieldGroup}>
-            <View style={styles.labelRow}>
-              <Text style={[styles.label, { color: themeColors.textSecondary }]}>Email Address</Text>
-              <Text style={styles.readOnlyBadge}>Authenticated Account</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.contentWrap}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View
+              style={[
+                styles.badge,
+                {
+                  backgroundColor: isDark ? 'rgba(16, 232, 160, 0.18)' : 'rgba(0, 179, 119, 0.12)',
+                  borderColor: tokens.primary,
+                },
+              ]}
+            >
+              <Icon name="sparkles" size={26} color={tokens.primary} />
             </View>
-            <View style={[glassStyles.input, styles.emailInputWrapper]}>
-              <Ionicons name="mail-outline" size={18} color={themeColors.textMuted} style={{ marginRight: 8 }} />
+            <Text style={[styles.title, { color: tokens.text.primary }]}>Setup Your Profile</Text>
+            <Text style={[styles.subtitle, { color: tokens.text.secondary }]}>
+              NutriTracker AI uses scientific Mifflin-St Jeor math to calculate your baseline targets.
+            </Text>
+          </View>
+
+          {/* Mandatory Completion Banner */}
+          <GlassCard
+            subtle
+            style={[
+              styles.noticeBanner,
+              {
+                borderColor: isDark ? 'rgba(255, 184, 0, 0.35)' : 'rgba(224, 154, 0, 0.25)',
+              },
+            ]}
+          >
+            <Icon name="information-circle-outline" size={20} color={tokens.macros.carbs} />
+            <Text style={[styles.noticeText, { color: tokens.text.primary }]}>
+              Please fill in your metrics below to unlock your daily dashboard and macro rings.
+            </Text>
+          </GlassCard>
+
+          {/* Physical Attributes Form */}
+          <GlassCard style={styles.sectionCard}>
+            <Text style={[styles.sectionTitle, { color: tokens.text.primary }]}>Physical Metrics</Text>
+
+            {/* Email Address Read-Only */}
+            <View style={styles.fieldGroup}>
+              <View style={styles.labelRow}>
+                <Text style={[styles.label, { color: tokens.text.secondary }]}>Email Address</Text>
+                <Text style={[styles.readOnlyBadge, { color: tokens.primary }]}>Authenticated Account</Text>
+              </View>
+              <View style={[styles.inputWrapper, { backgroundColor: tokens.input.bg, borderColor: tokens.input.border }]}>
+                <Icon name="mail-outline" size={17} color={tokens.text.muted} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={[styles.inputField, { color: tokens.text.primary }]}
+                  value={user?.email || 'user@nutritrack.ai'}
+                  editable={false}
+                  selectTextOnFocus={false}
+                />
+                <Icon name="lock-closed" size={14} color={tokens.text.muted} />
+              </View>
+            </View>
+
+            {/* Full Name */}
+            <View style={styles.fieldGroup}>
+              <Text style={[styles.label, { color: tokens.text.secondary }]}>Full Name *</Text>
               <TextInput
-                style={[styles.emailInputText, { color: themeColors.textPrimary }]}
-                value={user?.email || ''}
-                editable={false}
-                selectTextOnFocus={false}
-              />
-              <Ionicons name="lock-closed" size={14} color={themeColors.textMuted} />
-            </View>
-          </View>
-
-          {/* Full Name */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: themeColors.textSecondary }]}>Full Name *</Text>
-            <TextInput
-              style={[glassStyles.input, { color: themeColors.textPrimary }, !isNameValid && name !== '' && styles.invalidInput]}
-              value={name}
-              onChangeText={setName}
-              placeholder="Enter your name"
-              placeholderTextColor={themeColors.placeholder}
-            />
-          </View>
-
-          {/* Age & Sex */}
-          <View style={styles.rowTwo}>
-            <View style={styles.halfCol}>
-              <Text style={[styles.label, { color: themeColors.textSecondary }]}>Age *</Text>
-              <TextInput
-                style={[glassStyles.input, { color: themeColors.textPrimary }, !isAgeValid && age !== '' && styles.invalidInput]}
-                keyboardType="numeric"
-                value={age}
-                onChangeText={setAge}
-                placeholder="25"
-                placeholderTextColor={themeColors.placeholder}
+                style={[styles.inputFieldSolo, { backgroundColor: tokens.input.bg, borderColor: tokens.input.border, color: tokens.text.primary }]}
+                value={name}
+                onChangeText={setName}
+                placeholder="e.g. Tejas Muralidhar"
+                placeholderTextColor={tokens.input.placeholder}
               />
             </View>
-            <View style={styles.halfCol}>
-              <Text style={[styles.label, { color: themeColors.textSecondary }]}>Sex *</Text>
-              <View style={styles.pickerRow}>
-                {['male', 'female'].map(g => (
+
+            <View style={styles.rowTwo}>
+              <View style={styles.halfCol}>
+                <Text style={[styles.label, { color: tokens.text.secondary }]}>Age *</Text>
+                <TextInput
+                  style={[styles.inputFieldSolo, { backgroundColor: tokens.input.bg, borderColor: tokens.input.border, color: tokens.text.primary }]}
+                  keyboardType="numeric"
+                  value={age}
+                  onChangeText={setAge}
+                  placeholder="25"
+                  placeholderTextColor={tokens.input.placeholder}
+                />
+              </View>
+              <View style={styles.halfCol}>
+                <Text style={[styles.label, { color: tokens.text.secondary }]}>Sex *</Text>
+                <View style={styles.pickerRow}>
+                  {['male', 'female'].map((g) => (
+                    <TouchableOpacity
+                      key={g}
+                      style={[
+                        styles.miniBtn,
+                        {
+                          backgroundColor: gender === g
+                            ? (isDark ? 'rgba(16, 232, 160, 0.20)' : 'rgba(0, 179, 119, 0.15)')
+                            : tokens.neumorphic.inset,
+                          borderColor: gender === g ? tokens.primary : tokens.neumorphic.border,
+                        },
+                      ]}
+                      onPress={() => setGender(g)}
+                    >
+                      <Text
+                        style={[
+                          styles.miniText,
+                          {
+                            color: gender === g ? tokens.primary : tokens.text.secondary,
+                            fontWeight: gender === g ? '700' : '500',
+                          },
+                        ]}
+                      >
+                        {g.charAt(0).toUpperCase() + g.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.rowTwo}>
+              <View style={styles.halfCol}>
+                <Text style={[styles.label, { color: tokens.text.secondary }]}>Height (cm) *</Text>
+                <TextInput
+                  style={[styles.inputFieldSolo, { backgroundColor: tokens.input.bg, borderColor: tokens.input.border, color: tokens.text.primary }]}
+                  keyboardType="numeric"
+                  value={height}
+                  onChangeText={setHeight}
+                  placeholder="175"
+                  placeholderTextColor={tokens.input.placeholder}
+                />
+              </View>
+              <View style={styles.halfCol}>
+                <Text style={[styles.label, { color: tokens.text.secondary }]}>Current Weight (kg) *</Text>
+                <TextInput
+                  style={[styles.inputFieldSolo, { backgroundColor: tokens.input.bg, borderColor: tokens.input.border, color: tokens.text.primary }]}
+                  keyboardType="numeric"
+                  value={weight}
+                  onChangeText={setWeight}
+                  placeholder="75"
+                  placeholderTextColor={tokens.input.placeholder}
+                />
+              </View>
+            </View>
+
+            <View style={styles.rowTwo}>
+              <View style={styles.halfCol}>
+                <Text style={[styles.label, { color: tokens.text.secondary }]}>Target Weight (kg) *</Text>
+                <TextInput
+                  style={[styles.inputFieldSolo, { backgroundColor: tokens.input.bg, borderColor: tokens.input.border, color: tokens.text.primary }]}
+                  keyboardType="numeric"
+                  value={targetWeight}
+                  onChangeText={setTargetWeight}
+                  placeholder="70"
+                  placeholderTextColor={tokens.input.placeholder}
+                />
+              </View>
+              <View style={styles.halfCol}>
+                <Text style={[styles.label, { color: tokens.text.secondary }]}>Daily Water (glasses)</Text>
+                <TextInput
+                  style={[styles.inputFieldSolo, { backgroundColor: tokens.input.bg, borderColor: tokens.input.border, color: tokens.text.primary }]}
+                  keyboardType="numeric"
+                  value={waterGoal}
+                  onChangeText={setWaterGoal}
+                  placeholder="8"
+                  placeholderTextColor={tokens.input.placeholder}
+                />
+              </View>
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={[styles.label, { color: tokens.text.secondary }]}>Activity Level *</Text>
+              <View style={styles.activityGrid}>
+                {[
+                  ['sedentary', 'Sedentary (1.2)'],
+                  ['light', 'Light (1.375)'],
+                  ['moderate', 'Moderate (1.55)'],
+                  ['active', 'Active (1.725)'],
+                  ['very_active', 'Very Active (1.9)'],
+                ].map(([id, title]) => (
                   <TouchableOpacity
-                    key={g}
+                    key={id}
                     style={[
-                      glassStyles.cardSubtle,
-                      styles.miniBtn,
-                      gender === g && styles.activeMiniBtn
+                      styles.activityChip,
+                      {
+                        backgroundColor: activityLevel === id
+                          ? (isDark ? 'rgba(16, 232, 160, 0.20)' : 'rgba(0, 179, 119, 0.15)')
+                          : tokens.neumorphic.inset,
+                        borderColor: activityLevel === id ? tokens.primary : tokens.neumorphic.border,
+                      },
                     ]}
-                    onPress={() => setGender(g)}
+                    onPress={() => setActivityLevel(id)}
                   >
                     <Text
                       style={[
-                        styles.miniText,
-                        { color: gender === g ? (isDark ? '#34D399' : '#059669') : themeColors.textSecondary },
-                        gender === g && { fontWeight: '700' }
+                        styles.activityText,
+                        {
+                          color: activityLevel === id ? tokens.primary : tokens.text.secondary,
+                          fontWeight: activityLevel === id ? '700' : '500',
+                        },
                       ]}
                     >
-                      {g.charAt(0).toUpperCase() + g.slice(1)}
+                      {title}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
-          </View>
+          </GlassCard>
 
-          {/* Height & Weight */}
-          <View style={styles.rowTwo}>
-            <View style={styles.halfCol}>
-              <Text style={[styles.label, { color: themeColors.textSecondary }]}>Height (cm) *</Text>
-              <TextInput
-                style={[glassStyles.input, { color: themeColors.textPrimary }, !isHeightValid && height !== '' && styles.invalidInput]}
-                keyboardType="numeric"
-                value={height}
-                onChangeText={setHeight}
-                placeholder="175"
-                placeholderTextColor={themeColors.placeholder}
-              />
+          {/* Goal Pace Selector */}
+          <GlassCard style={styles.sectionCard}>
+            <View style={styles.headerBetween}>
+              <Text style={[styles.sectionTitle, { color: tokens.text.primary }]}>
+                {autoGoalType === 'muscle_gain'
+                  ? 'Weight Gain Pace'
+                  : autoGoalType === 'maintenance'
+                  ? 'Maintenance Goal'
+                  : 'Fat Loss Pace'}
+              </Text>
+              {previewLoading && <ActivityIndicator size="small" color={tokens.primary} />}
             </View>
-            <View style={styles.halfCol}>
-              <Text style={[styles.label, { color: themeColors.textSecondary }]}>Current Weight (kg) *</Text>
-              <TextInput
-                style={[glassStyles.input, { color: themeColors.textPrimary }, !isWeightValid && weight !== '' && styles.invalidInput]}
-                keyboardType="numeric"
-                value={weight}
-                onChangeText={setWeight}
-                placeholder="75"
-                placeholderTextColor={themeColors.placeholder}
-              />
-            </View>
-          </View>
-
-          {/* Target Weight & Water Goal */}
-          <View style={styles.rowTwo}>
-            <View style={styles.halfCol}>
-              <Text style={[styles.label, { color: themeColors.textSecondary }]}>Target Weight (kg) *</Text>
-              <TextInput
-                style={[glassStyles.input, { color: themeColors.textPrimary }, !isTargetWeightValid && targetWeight !== '' && styles.invalidInput]}
-                keyboardType="numeric"
-                value={targetWeight}
-                onChangeText={setTargetWeight}
-                placeholder="70"
-                placeholderTextColor={themeColors.placeholder}
-              />
-            </View>
-            <View style={styles.halfCol}>
-              <Text style={[styles.label, { color: themeColors.textSecondary }]}>Daily Water (glasses)</Text>
-              <TextInput
-                style={[glassStyles.input, { color: themeColors.textPrimary }]}
-                keyboardType="numeric"
-                value={waterGoal}
-                onChangeText={setWaterGoal}
-                placeholder="8"
-                placeholderTextColor={themeColors.placeholder}
-              />
-            </View>
-          </View>
-
-          {/* Activity Level */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: themeColors.textSecondary }]}>Activity Level *</Text>
-            <View style={styles.activityGrid}>
-              {[
-                ['sedentary', 'Sedentary (1.2)'],
-                ['light', 'Light (1.375)'],
-                ['moderate', 'Moderate (1.55)'],
-                ['active', 'Active (1.725)'],
-                ['very_active', 'Very Active (1.9)'],
-              ].map(([id, title]) => (
-                <TouchableOpacity
-                  key={id}
-                  style={[
-                    glassStyles.cardSubtle,
-                    styles.activityChip,
-                    activityLevel === id && styles.activeActivityChip
-                  ]}
-                  onPress={() => setActivityLevel(id)}
-                >
-                  <Text
-                    style={[
-                      styles.activityText,
-                      { color: activityLevel === id ? (isDark ? '#34D399' : '#059669') : themeColors.textSecondary },
-                      activityLevel === id && { fontWeight: '700' }
-                    ]}
-                  >
-                    {title}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        {/* Dynamic Goal Pace Card (Weight Gain / Fat Loss / Maintenance) */}
-        <View style={[glassStyles.card, styles.sectionCard]}>
-          <View style={styles.headerBetween}>
-            <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>
-              {autoGoalType === 'muscle_gain'
-                ? 'Weight Gain Pace *'
-                : autoGoalType === 'maintenance'
-                ? 'Maintenance Goal *'
-                : 'Fat Loss Pace *'}
+            <Text style={[styles.sectionSub, { color: tokens.text.secondary }]}>
+              Select your targeted velocity to generate your daily calorie budget.
             </Text>
-            {previewLoading && <ActivityIndicator size="small" color="#10B981" />}
-          </View>
-          <Text style={[styles.sectionSub, { color: themeColors.textSecondary }]}>
-            {autoGoalType === 'muscle_gain'
-              ? 'Select your target weight gain pace per week to calculate daily calorie surplus & macros.'
-              : autoGoalType === 'maintenance'
-              ? 'Target weight matches current weight — daily calories set to maintenance TDEE.'
-              : 'Select your target pace per week to calculate daily calories.'}
-          </Text>
 
-          {ratePreviews.map((opt) => {
-            const isSelected = String(fatLossRate) === String(opt.rate);
-            return (
-              <TouchableOpacity
-                key={opt.rate}
-                style={[
-                  glassStyles.cardSubtle,
-                  styles.rateOptionCard,
-                  isSelected && styles.rateOptionCardSelected,
-                  opt.is_aggressive && styles.rateOptionCardAggressive,
-                ]}
-                onPress={() => setFatLossRate(String(opt.rate))}
-              >
-                <View style={styles.rateCardTop}>
-                  <View>
-                    <Text style={[styles.ratePaceText, { color: themeColors.textPrimary }]}>
-                      {autoGoalType === 'maintenance'
-                        ? 'Maintenance'
-                        : `${opt.rate} kg/week`}
-                    </Text>
-                    <Text style={[styles.rateBadgeText, { color: themeColors.textSecondary }]}>
-                      {opt.badge}
-                    </Text>
-                  </View>
-                  <Ionicons
-                    name={isSelected ? 'checkmark-circle' : 'radio-button-off'}
-                    size={21}
-                    color={isSelected ? '#10B981' : themeColors.textMuted}
-                  />
-                </View>
-                <View
+            {ratePreviews.map((opt) => {
+              const isSelected = String(fatLossRate) === String(opt.rate);
+              return (
+                <TouchableOpacity
+                  key={opt.rate}
+                  activeOpacity={0.85}
                   style={[
-                    styles.rateMetricsRow,
+                    styles.rateOptionCard,
                     {
-                      backgroundColor: isDark
-                        ? 'rgba(255, 255, 255, 0.06)'
-                        : 'rgba(0, 0, 0, 0.04)',
+                      backgroundColor: isSelected
+                        ? (isDark ? 'rgba(16, 232, 160, 0.15)' : 'rgba(0, 179, 119, 0.12)')
+                        : tokens.neumorphic.inset,
+                      borderColor: isSelected ? tokens.primary : tokens.neumorphic.border,
                     },
                   ]}
+                  onPress={() => setFatLossRate(String(opt.rate))}
                 >
-                  <View style={styles.rateMetric}>
-                    <Text style={styles.rateMetricVal}>{opt.target_calories} kcal</Text>
-                    <Text style={[styles.rateMetricLbl, { color: themeColors.textMuted }]}>
-                      Daily Target
-                    </Text>
+                  <View style={styles.rateCardTop}>
+                    <View>
+                      <Text style={[styles.ratePaceText, { color: tokens.text.primary }]}>
+                        {autoGoalType === 'maintenance' ? 'Maintenance' : `${opt.rate} kg/week`}
+                      </Text>
+                      <Text style={[styles.rateBadgeText, { color: tokens.text.secondary }]}>
+                        {opt.badge}
+                      </Text>
+                    </View>
+                    <Icon
+                      name={isSelected ? 'checkmark-circle' : 'radio-button-off'}
+                      size={20}
+                      color={isSelected ? tokens.primary : tokens.text.muted}
+                    />
                   </View>
-                  <View style={styles.rateMetric}>
-                    <Text style={styles.rateMetricVal}>
-                      {autoGoalType === 'maintenance' ? 'Ongoing' : `~${opt.weeks_to_target}wks`}
-                    </Text>
-                    <Text style={[styles.rateMetricLbl, { color: themeColors.textMuted }]}>
-                      Duration
-                    </Text>
+                  <View style={[styles.rateMetricsRow, { backgroundColor: tokens.liquidGlass.fill }]}>
+                    <View style={styles.rateMetric}>
+                      <Text
+                        allowFontScaling={true}
+                        maxFontSizeMultiplier={1.3}
+                        style={[styles.rateMetricVal, { color: tokens.primary }]}
+                      >
+                        {opt.target_calories} kcal
+                      </Text>
+                      <Text
+                        allowFontScaling={true}
+                        maxFontSizeMultiplier={1.3}
+                        style={[styles.rateMetricLbl, { color: tokens.text.secondary }]}
+                      >
+                        Daily Target
+                      </Text>
+                    </View>
+                    <View style={styles.rateMetric}>
+                      <Text
+                        allowFontScaling={true}
+                        maxFontSizeMultiplier={1.3}
+                        style={[styles.rateMetricVal, { color: tokens.primary }]}
+                      >
+                        {autoGoalType === 'maintenance' ? 'Ongoing' : `~${opt.weeks_to_target}wks`}
+                      </Text>
+                      <Text
+                        allowFontScaling={true}
+                        maxFontSizeMultiplier={1.3}
+                        style={[styles.rateMetricLbl, { color: tokens.text.secondary }]}
+                      >
+                        Duration
+                      </Text>
+                    </View>
+                    <View style={styles.rateMetric}>
+                      <Text
+                        allowFontScaling={true}
+                        maxFontSizeMultiplier={1.3}
+                        style={[styles.rateMetricVal, { color: tokens.primary }]}
+                      >
+                        {autoGoalType === 'maintenance' ? 'Maintain' : opt.estimated_date}
+                      </Text>
+                      <Text
+                        allowFontScaling={true}
+                        maxFontSizeMultiplier={1.3}
+                        style={[styles.rateMetricLbl, { color: tokens.text.secondary }]}
+                      >
+                        Est. Date
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.rateMetric}>
-                    <Text style={styles.rateMetricVal}>
-                      {autoGoalType === 'maintenance' ? 'Maintain' : opt.estimated_date}
-                    </Text>
-                    <Text style={[styles.rateMetricLbl, { color: themeColors.textMuted }]}>
-                      Est. Date
-                    </Text>
-                  </View>
-                </View>
-                {opt.warning && (
-                  <View style={styles.warningFlag}>
-                    <Ionicons name="warning-outline" size={13} color="#FBBF24" />
-                    <Text style={styles.warningText}>{opt.warning}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
+                  {opt.warning && (
+                    <View
+                      style={[
+                        styles.warningFlag,
+                        {
+                          backgroundColor: isDark ? 'rgba(255, 184, 0, 0.15)' : 'rgba(224, 154, 0, 0.12)',
+                          borderColor: isDark ? 'rgba(255, 184, 0, 0.35)' : 'rgba(224, 154, 0, 0.25)',
+                        },
+                      ]}
+                    >
+                      <Icon name="warning-outline" size={13} color={tokens.macros.carbs} />
+                      <Text style={[styles.warningText, { color: tokens.macros.carbs }]}>
+                        {opt.warning}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
 
-          {!isFormValid && (
-            <View style={styles.validationHint}>
-              <Ionicons name="alert-circle-outline" size={16} color="#F59E0B" />
-              <Text style={styles.validationHintText}>
-                Please fill in all required fields (Name, Age, Height, Current Weight, Target Weight, Activity & Goal Pace) to continue.
-              </Text>
-            </View>
-          )}
-
-          <TouchableOpacity
-            style={[styles.saveBtn, (!isFormValid || loading) && styles.disabledSaveBtn]}
-            onPress={handleSaveOnboarding}
-            disabled={!isFormValid || loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <View style={styles.saveBtnContent}>
-                <Text style={styles.saveBtnText}>Save & Recalculate Targets</Text>
-                <Ionicons name="arrow-forward" size={18} color="#fff" />
+            {!isFormValid && (
+              <View
+                style={[
+                  styles.validationHint,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 184, 0, 0.12)' : 'rgba(224, 154, 0, 0.10)',
+                    borderColor: isDark ? 'rgba(255, 184, 0, 0.30)' : 'rgba(224, 154, 0, 0.25)',
+                  },
+                ]}
+              >
+                <Icon name="alert-circle-outline" size={16} color={tokens.macros.carbs} />
+                <Text style={[styles.validationHintText, { color: tokens.macros.carbs }]}>
+                  Please fill in all required fields (*) with valid numbers.
+                </Text>
               </View>
             )}
-          </TouchableOpacity>
-        </View>
 
-        {/* Log Out Option */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-          <Ionicons name="log-out-outline" size={18} color="#F87171" />
-          <Text style={styles.logoutText}>Log Out / Switch Account</Text>
-        </TouchableOpacity>
+            <LiquidButton
+              onPress={handleSaveOnboarding}
+              disabled={loading || !isFormValid}
+              style={{ marginTop: 8 }}
+            >
+              {loading ? 'Calculating Targets...' : 'Complete Setup & Enter Dashboard'}
+            </LiquidButton>
+
+            <LiquidButton
+              variant="secondary"
+              onPress={logout}
+              icon="log-out-outline"
+              style={{ marginTop: 6 }}
+            >
+              Sign Out
+            </LiquidButton>
+          </GlassCard>
+        </View>
       </ScrollView>
     </AmbientBackground>
   );
@@ -447,7 +513,16 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 60, gap: 14 },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 60,
+    alignItems: 'center',
+  },
+  contentWrap: {
+    width: '100%',
+    maxWidth: 520,
+    gap: 14,
+  },
   header: { alignItems: 'center', marginTop: 10, marginBottom: 6 },
   badge: {
     width: 54,
@@ -456,102 +531,96 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
-    borderWidth: 1,
+    borderWidth: 1.5,
   },
-  title: { fontSize: 24, fontWeight: '800', letterSpacing: -0.5 },
-  subtitle: { fontSize: 13, marginTop: 4, textAlign: 'center', lineHeight: 18 },
+  title: { fontSize: 24, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', letterSpacing: -0.2 },
+  subtitle: { fontSize: 13, fontFamily: 'PlusJakartaSans_500Medium', marginTop: 4, textAlign: 'center', lineHeight: 19 },
   noticeBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 13,
-    borderRadius: 14,
-    borderWidth: 1,
     gap: 10,
   },
-  noticeText: { fontSize: 12, fontWeight: '600', flex: 1, lineHeight: 17 },
-  sectionCard: { borderRadius: 22, padding: 18, gap: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '700' },
-  sectionSub: { fontSize: 12, marginBottom: 2 },
+  noticeText: { fontSize: 12, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold', flex: 1, lineHeight: 17 },
+  sectionCard: { padding: 16, gap: 11 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', letterSpacing: -0.15 },
+  sectionSub: { fontSize: 12, fontFamily: 'PlusJakartaSans_500Medium', marginBottom: 2 },
   headerBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  fieldGroup: { gap: 6 },
+  fieldGroup: { gap: 5 },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  label: { fontSize: 13, fontWeight: '600' },
-  readOnlyBadge: { fontSize: 10, color: '#34D399', fontWeight: '600' },
-  emailInputWrapper: {
+  label: { fontSize: 12, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
+  readOnlyBadge: { fontSize: 12, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    opacity: 0.85,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
   },
-  emailInputText: { flex: 1, fontSize: 14, fontWeight: '500' },
-  invalidInput: { borderColor: '#EF4444' },
+  inputField: { flex: 1, fontSize: 14, fontFamily: 'PlusJakartaSans_500Medium' },
+  inputFieldSolo: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    fontFamily: 'PlusJakartaSans_500Medium',
+  },
   rowTwo: { flexDirection: 'row', gap: 11 },
-  halfCol: { flex: 1, gap: 6 },
+  halfCol: { flex: 1, gap: 5 },
   pickerRow: { flexDirection: 'row', gap: 6 },
   miniBtn: {
     flex: 1,
-    flexDirection: 'row',
-    gap: 6,
-    paddingVertical: 11,
+    borderWidth: 1,
+    paddingVertical: 10,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  activeMiniBtn: { backgroundColor: 'rgba(16, 185, 129, 0.2)', borderColor: '#10B981' },
-  miniText: { fontSize: 12 },
+  miniText: { fontSize: 13, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
   activityGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  activityChip: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10 },
-  activeActivityChip: { backgroundColor: 'rgba(16, 185, 129, 0.2)', borderColor: '#10B981' },
-  activityText: { fontSize: 11 },
-  rateOptionCard: { borderRadius: 16, padding: 13, gap: 8 },
-  rateOptionCardSelected: { borderColor: '#10B981', backgroundColor: 'rgba(16, 185, 129, 0.15)' },
-  rateOptionCardAggressive: { borderColor: 'rgba(245, 158, 11, 0.4)' },
+  activityChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 11,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  activityText: { fontSize: 12, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
+  rateOptionCard: {
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
   rateCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  ratePaceText: { fontSize: 14, fontWeight: '700' },
-  rateBadgeText: { fontSize: 11 },
-  rateMetricsRow: { flexDirection: 'row', justifyContent: 'space-between', borderRadius: 10, padding: 9 },
+  ratePaceText: { fontSize: 14, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
+  rateBadgeText: { fontSize: 12, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold', marginTop: 1 },
+  rateMetricsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    borderRadius: 10,
+    padding: 8,
+  },
   rateMetric: { alignItems: 'center' },
-  rateMetricVal: { color: '#10B981', fontSize: 12, fontWeight: '700' },
-  rateMetricLbl: { fontSize: 9, marginTop: 2 },
-  warningFlag: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(245, 158, 11, 0.15)', padding: 7, borderRadius: 8 },
-  warningText: { color: '#FBBF24', fontSize: 10, flex: 1 },
+  rateMetricVal: { fontSize: 12, fontWeight: '700', fontFamily: 'SpaceGrotesk_700Bold', fontVariant: ['tabular-nums'] },
+  rateMetricLbl: { fontSize: 12, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold', marginTop: 2 },
+  warningFlag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    padding: 7,
+    borderRadius: 8,
+  },
+  warningText: { fontSize: 12, flex: 1, lineHeight: 17, fontFamily: 'PlusJakartaSans_500Medium' },
   validationHint: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
     padding: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
   },
-  validationHintText: { color: '#F59E0B', fontSize: 11, flex: 1, lineHeight: 15, fontWeight: '500' },
-  saveBtn: {
-    backgroundColor: '#10B981',
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 4,
-  },
-  disabledSaveBtn: { opacity: 0.45 },
-  saveBtnContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  logoutBtn: {
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    borderRadius: 14,
-    paddingVertical: 13,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    marginTop: 4,
-    ...(Platform.OS === 'web' ? {
-      backdropFilter: 'blur(12px)',
-      WebkitBackdropFilter: 'blur(12px)',
-    } : {}),
-  },
-  logoutText: { color: '#F87171', fontSize: 14, fontWeight: '700' },
+  validationHintText: { fontSize: 12, flex: 1, lineHeight: 17, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
 });

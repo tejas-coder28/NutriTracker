@@ -1,63 +1,62 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Image, StyleSheet, Animated, Easing, Dimensions, Platform } from 'react-native';
-import { SplashScreen as CapacitorSplashScreen } from '@capacitor/splash-screen';
+import { View, Image, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
 
 const LOGO_IMAGE = require('../../assets/logo.png');
 
 /**
- * SplashScreen component — Smooth animated launch splash screen with Capacitor handoff.
+ * SplashScreen component — Fast, smooth animated launch splash screen.
+ *
+ * Requirements:
+ * - Total duration ~600-800ms (snappy intro).
+ * - Background: Solid black (#000000).
+ * - Animation: Logo starts at 85% scale (0.85) and 0 opacity -> animates to 100% (1.0) scale and 1 opacity.
+ * - Easing: Ease-out timing (fast start, smooth settle).
+ * - Runs IN PARALLEL with background initialization (`isAppReady` / `isLoading`).
+ * - Disappears smoothly with a 200ms fade-out as soon as both (a) min animation played & (b) app init complete.
  */
 export default function SplashScreen({ isAppReady, onFinish }) {
   const [minAnimDone, setMinAnimDone] = useState(false);
   const [isDismissing, setIsDismissing] = useState(false);
 
-  // Animated values
+  // Animated values for GPU-accelerated 60fps animations
   const logoScale = useRef(new Animated.Value(0.85)).current;
-  const logoOpacity = useRef(new Animated.Value(0.1)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
   const splashOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Hide native Capacitor splash screen to achieve smooth handoff to web animated splash
-    CapacitorSplashScreen.hide().catch(() => {});
-
-    // Parallel entrance animation for logo (scale + fade in)
+    // Parallel entrance animation for logo (650ms, ease-out)
     Animated.parallel([
       Animated.timing(logoScale, {
         toValue: 1.0,
-        duration: 750,
-        easing: Easing.out(Easing.back(1.2)),
+        duration: 650,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(logoOpacity, {
         toValue: 1.0,
-        duration: 600,
-        easing: Easing.out(Easing.quad),
+        duration: 650,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
-    ]).start();
-
-    // Guarantee minimum display time (1000ms) so intro animation is clearly visible
-    const timer = setTimeout(() => {
+    ]).start(() => {
       setMinAnimDone(true);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    });
   }, []);
 
-  // Dismiss when both minimum animation time is reached AND app state is ready
+  // When both minimum animation timer is done AND background app initialization is complete, dismiss!
   useEffect(() => {
     if (minAnimDone && isAppReady && !isDismissing) {
       setIsDismissing(true);
       Animated.timing(splashOpacity, {
         toValue: 0,
-        duration: 300,
+        duration: 200,
         easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }).start(() => {
         if (onFinish) onFinish();
       });
     }
-  }, [minAnimDone, isAppReady, isDismissing, onFinish]);
+  }, [minAnimDone, isAppReady, isDismissing]);
 
   return (
     <Animated.View style={[styles.container, { opacity: splashOpacity }]}>
@@ -89,19 +88,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 999999,
-    elevation: 999999,
-    ...(Platform.OS === 'web'
-      ? {
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          width: '100vw',
-          height: '100vh',
-        }
-      : {}),
+    zIndex: 99999,
+    elevation: 99999,
   },
   logoContainer: {
     justifyContent: 'center',
@@ -112,4 +100,3 @@ const styles = StyleSheet.create({
     height: LOGO_SIZE,
   },
 });
-

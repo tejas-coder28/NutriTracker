@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, ScrollView, Alert
+  View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, ScrollView, Alert, Platform
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { WORKOUT_TYPES, WORKOUT_PRESETS, calculateCaloriesBurned } from '../services/workoutService';
 import { insertWorkoutLog, getCustomPresets, insertCustomPreset, deleteCustomPreset } from '../services/database';
 import { useTheme } from '../context/ThemeContext';
+import LiquidButton from './primitives/LiquidButton';
+import Icon from './ui/Icon';
 
 export default function LogWorkoutModal({ visible, onClose, userWeight, onWorkoutAdded, onPromptAddWeight }) {
-  const { isDark, themeColors, glassStyles } = useTheme();
+  const { isDark, themeColors, tokens } = useTheme();
   const [workoutType, setWorkoutType] = useState('Walking');
   const [durationMin, setDurationMin] = useState('30');
   const [intensity, setIntensity] = useState('moderate');
@@ -70,35 +72,18 @@ export default function LogWorkoutModal({ visible, onClose, userWeight, onWorkou
     }
   };
 
-  const executeDeletePreset = async (id) => {
-    try {
-      await deleteCustomPreset(id);
-      setUserPresets((prev) => prev.filter((p) => p.id !== id));
-    } catch (err) {
-      Alert.alert('Error', err.message || 'Failed to delete preset.');
-    }
-  };
-
-  const handleDeletePreset = (id, title, e) => {
-    if (e && e.stopPropagation) {
-      e.stopPropagation();
-    }
-
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(`Remove "${title}" from your saved presets?`);
-      if (confirmed) {
-        executeDeletePreset(id);
+  const handleDeletePreset = async (id, title) => {
+    Alert.alert('Delete Preset', `Remove "${title}" from your saved presets?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          await deleteCustomPreset(id);
+          setUserPresets(userPresets.filter(p => p.id !== id));
+        }
       }
-    } else {
-      Alert.alert('Delete Preset', `Remove "${title}" from your saved presets?`, [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => executeDeletePreset(id),
-        },
-      ]);
-    }
+    ]);
   };
 
   const handleSave = async () => {
@@ -151,47 +136,98 @@ export default function LogWorkoutModal({ visible, onClose, userWeight, onWorkou
     setPresetTitleInput('');
   };
 
+  const isWeb = Platform.OS === 'web';
+
   return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={() => { resetForm(); onClose(); }}>
-      <View style={[s.overlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.4)' }]}>
-        <View style={[glassStyles.modalContent, s.sheet]}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={() => { resetForm(); onClose(); }}>
+      <View style={[s.overlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.72)' : 'rgba(15,23,42,0.45)' }]}>
+        <View
+          style={[
+            s.sheet,
+            {
+              backgroundColor: isDark ? tokens.colors.liquidGlassBg : tokens.colors.glassBg,
+              borderColor: tokens.colors.glassBorder,
+              shadowColor: tokens.colors.glassShadow,
+            },
+            isWeb && {
+              backdropFilter: `blur(${tokens.blur.sheet}px) saturate(160%)`,
+              WebkitBackdropFilter: `blur(${tokens.blur.sheet}px) saturate(160%)`,
+            }
+          ]}
+        >
+          {Platform.OS !== 'web' && (
+            <BlurView intensity={tokens.blur.sheet} tint={tokens.blur.tint} style={StyleSheet.absoluteFill} />
+          )}
+
+          {/* Grab Handle */}
+          <View style={s.handleContainer}>
+            <View style={[s.handle, { backgroundColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(15,23,42,0.18)' }]} />
+          </View>
+
+          {/* Specular Highlight Line */}
+          <View style={[s.specularLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.7)' }]} />
+
+          {/* Header */}
           <View style={s.header}>
             <View style={s.headerLeft}>
-              <Ionicons name="fitness-outline" size={22} color={themeColors.primary} />
-              <Text style={[s.headerTitle, { color: themeColors.textPrimary }]}>Log Workout</Text>
+              <View style={[s.iconBox, { backgroundColor: isDark ? 'rgba(16,232,160,0.12)' : 'rgba(0,179,119,0.12)' }]}>
+                <Icon name="fitness-outline" size={20} color={tokens.colors.primary} />
+              </View>
+              <Text style={[s.headerTitle, { color: tokens.colors.textPrimary }]}>Log Workout</Text>
             </View>
-            <TouchableOpacity onPress={() => { resetForm(); onClose(); }}>
-              <Ionicons name="close" size={24} color={themeColors.textMuted} />
+            <TouchableOpacity
+              onPress={() => { resetForm(); onClose(); }}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              style={[
+                s.modalCloseBtn,
+                {
+                  backgroundColor: tokens.liquidGlass.fill,
+                  borderColor: tokens.liquidGlass.rim,
+                }
+              ]}
+            >
+              <Icon name="close" size={20} color={tokens.text.primary} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={s.scroll} keyboardShouldPersistTaps="handled">
+          <ScrollView style={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             {/* Presets Header */}
             <View style={s.presetHeaderRow}>
-              <Text style={[s.sectionLabel, { color: themeColors.textPrimary }]}>Workout Presets</Text>
+              <Text style={[s.sectionLabel, { color: tokens.colors.textPrimary }]}>Workout Presets</Text>
               <TouchableOpacity style={s.addPresetLink} onPress={() => setShowSavePreset(!showSavePreset)}>
-                <Ionicons name={showSavePreset ? 'close' : 'add-circle-outline'} size={15} color={isDark ? '#34D399' : '#059669'} />
-                <Text style={[s.addPresetLinkText, { color: isDark ? '#34D399' : '#059669' }]}>{showSavePreset ? 'Cancel' : '+ Save Preset'}</Text>
+                <Icon name={showSavePreset ? 'close' : 'add-circle-outline'} size={15} color={tokens.colors.primary} />
+                <Text style={[s.addPresetLinkText, { color: tokens.colors.primary }]}>{showSavePreset ? 'Cancel' : '+ Save Preset'}</Text>
               </TouchableOpacity>
             </View>
 
             {/* Save Custom Preset Input Box */}
             {showSavePreset && (
-              <View style={[glassStyles.cardSubtle, s.savePresetBox]}>
-                <Text style={[s.savePresetTitle, { color: themeColors.textPrimary }]}>Save current configuration as preset</Text>
+              <View style={[s.savePresetBox, { backgroundColor: tokens.colors.neuBase, borderColor: tokens.colors.cardBorderSubtle }]}>
+                <Text style={[s.savePresetTitle, { color: tokens.colors.textPrimary }]}>Save current configuration as preset</Text>
                 <View style={s.savePresetRow}>
                   <TextInput
-                    style={[glassStyles.input, s.savePresetInput, { color: themeColors.textPrimary }]}
+                    style={[
+                      s.savePresetInput,
+                      {
+                        color: tokens.colors.textPrimary,
+                        backgroundColor: tokens.colors.inputBg,
+                        borderColor: tokens.colors.inputBorder,
+                      }
+                    ]}
                     placeholder="e.g. Gym Day, Evening Run"
-                    placeholderTextColor={themeColors.placeholder}
+                    placeholderTextColor={tokens.colors.placeholder}
                     value={presetTitleInput}
                     onChangeText={setPresetTitleInput}
                   />
-                  <TouchableOpacity style={s.savePresetConfirmBtn} onPress={handleSaveCustomPreset}>
-                    <Text style={s.savePresetConfirmText}>Save</Text>
+                  <TouchableOpacity
+                    style={[s.savePresetConfirmBtn, { backgroundColor: tokens.colors.primary }]}
+                    onPress={handleSaveCustomPreset}
+                  >
+                    <Text style={[s.savePresetConfirmText, { color: tokens.colors.primaryText }]}>Save</Text>
                   </TouchableOpacity>
                 </View>
-                <Text style={[s.savePresetSub, { color: themeColors.textSecondary }]}>
+                <Text style={[s.savePresetSub, { color: tokens.colors.textSecondary }]}>
                   Saves: {workoutType} • {durationMin} min • {intensity}
                 </Text>
               </View>
@@ -201,43 +237,47 @@ export default function LogWorkoutModal({ visible, onClose, userWeight, onWorkou
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.presetScroll}>
               {/* User Saved Custom Presets */}
               {userPresets.map((preset) => (
-                <View
+                <TouchableOpacity
                   key={`custom_${preset.id}`}
-                  style={[s.presetChip, s.customPresetChip, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.10)', borderColor: isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(16, 185, 129, 0.3)' }]}
+                  style={[
+                    s.presetChip,
+                    {
+                      backgroundColor: isDark ? 'rgba(16, 232, 160, 0.15)' : 'rgba(0, 179, 119, 0.12)',
+                      borderColor: tokens.colors.primary,
+                    }
+                  ]}
+                  onPress={() => handleSelectPreset(preset)}
+                  onLongPress={() => handleDeletePreset(preset.id, preset.title)}
                 >
-                  <TouchableOpacity
-                    style={s.presetMainClick}
-                    onPress={() => handleSelectPreset(preset)}
-                  >
-                    <Ionicons name="bookmark" size={13} color={isDark ? '#34D399' : '#059669'} />
-                    <Text style={[s.presetText, { color: isDark ? '#34D399' : '#059669', fontWeight: '700' }]}>{preset.title}</Text>
+                  <Icon name="bookmark" size={13} color={tokens.colors.primary} />
+                  <Text style={[s.presetText, { color: tokens.colors.primary, fontWeight: '700' }]}>{preset.title}</Text>
+                  <TouchableOpacity style={s.presetTrashIcon} onPress={() => handleDeletePreset(preset.id, preset.title)}>
+                    <Icon name="close-circle" size={14} color={tokens.colors.textMuted} />
                   </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={s.presetTrashIcon}
-                    onPress={(e) => handleDeletePreset(preset.id, preset.title, e)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons name="close-circle" size={15} color={isDark ? '#F87171' : '#EF4444'} />
-                  </TouchableOpacity>
-                </View>
+                </TouchableOpacity>
               ))}
 
               {/* Standard Built-In Presets */}
               {WORKOUT_PRESETS.map((preset, idx) => (
                 <TouchableOpacity
                   key={`sys_${idx}`}
-                  style={[s.presetChip, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)', borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)' }]}
+                  style={[
+                    s.presetChip,
+                    {
+                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(15, 23, 42, 0.04)',
+                      borderColor: tokens.colors.glassBorder,
+                    }
+                  ]}
                   onPress={() => handleSelectPreset(preset)}
                 >
-                  <Ionicons name="flash-outline" size={13} color={isDark ? '#FBBF24' : '#D97706'} />
-                  <Text style={[s.presetText, { color: themeColors.textPrimary }]}>{preset.title}</Text>
+                  <Icon name="flash-outline" size={13} color={tokens.colors.warning} />
+                  <Text style={[s.presetText, { color: tokens.colors.textPrimary }]}>{preset.title}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
 
             {/* Select Workout Type */}
-            <Text style={[s.sectionLabel, { color: themeColors.textPrimary }]}>Workout Type</Text>
+            <Text style={[s.sectionLabel, { color: tokens.colors.textPrimary }]}>Workout Type</Text>
             <View style={s.typeGrid}>
               {WORKOUT_TYPES.map(w => {
                 const isSelected = workoutType === w.id;
@@ -248,15 +288,23 @@ export default function LogWorkoutModal({ visible, onClose, userWeight, onWorkou
                       s.typeCard,
                       {
                         backgroundColor: isSelected
-                          ? (isDark ? 'rgba(16, 185, 129, 0.18)' : 'rgba(16, 185, 129, 0.12)')
-                          : (isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.04)'),
-                        borderColor: isSelected ? '#10B981' : (isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)'),
+                          ? (isDark ? 'rgba(16, 232, 160, 0.18)' : 'rgba(0, 179, 119, 0.14)')
+                          : (isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.04)'),
+                        borderColor: isSelected ? tokens.colors.primary : tokens.colors.cardBorderSubtle,
                       }
                     ]}
                     onPress={() => setWorkoutType(w.id)}
                   >
-                    <Ionicons name={w.icon} size={20} color={isSelected ? (isDark ? '#34D399' : '#059669') : themeColors.textMuted} />
-                    <Text style={[s.typeText, { color: isSelected ? (isDark ? '#34D399' : '#059669') : themeColors.textSecondary }, isSelected && { fontWeight: '700' }]}>{w.label}</Text>
+                    <Icon name={w.icon} size={20} color={isSelected ? tokens.colors.primary : tokens.colors.textMuted} />
+                    <Text
+                      style={[
+                        s.typeText,
+                        { color: isSelected ? tokens.colors.primary : tokens.colors.textSecondary },
+                        isSelected && { fontWeight: '700' }
+                      ]}
+                    >
+                      {w.label}
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
@@ -265,22 +313,30 @@ export default function LogWorkoutModal({ visible, onClose, userWeight, onWorkou
             {/* Duration & Intensity Inputs */}
             <View style={s.rowTwo}>
               <View style={s.halfCol}>
-                <Text style={[s.sectionLabel, { color: themeColors.textPrimary }]}>Duration (minutes)</Text>
-                <View style={[glassStyles.input, s.inputBox]}>
+                <Text style={[s.sectionLabel, { color: tokens.colors.textPrimary }]}>Duration (minutes)</Text>
+                <View
+                  style={[
+                    s.inputBox,
+                    {
+                      backgroundColor: tokens.colors.inputBg,
+                      borderColor: tokens.colors.inputBorder,
+                    }
+                  ]}
+                >
                   <TextInput
-                    style={[s.input, { color: themeColors.textPrimary }]}
+                    style={[s.input, { color: tokens.colors.textPrimary }]}
                     keyboardType="numeric"
                     value={durationMin}
                     onChangeText={setDurationMin}
                     placeholder="30"
-                    placeholderTextColor={themeColors.placeholder}
+                    placeholderTextColor={tokens.colors.placeholder}
                   />
-                  <Text style={[s.inputUnit, { color: themeColors.textSecondary }]}>min</Text>
+                  <Text style={[s.inputUnit, { color: tokens.colors.textSecondary }]}>min</Text>
                 </View>
               </View>
 
               <View style={s.halfCol}>
-                <Text style={[s.sectionLabel, { color: themeColors.textPrimary }]}>Intensity</Text>
+                <Text style={[s.sectionLabel, { color: tokens.colors.textPrimary }]}>Intensity</Text>
                 <View style={s.intensityRow}>
                   {['light', 'moderate', 'intense'].map(lvl => {
                     const isSelected = intensity === lvl;
@@ -291,14 +347,20 @@ export default function LogWorkoutModal({ visible, onClose, userWeight, onWorkou
                           s.intensityChip,
                           {
                             backgroundColor: isSelected
-                              ? (isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.12)')
-                              : (isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.04)'),
-                            borderColor: isSelected ? '#10B981' : (isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)'),
+                              ? (isDark ? 'rgba(16, 232, 160, 0.20)' : 'rgba(0, 179, 119, 0.14)')
+                              : (isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.04)'),
+                            borderColor: isSelected ? tokens.colors.primary : tokens.colors.cardBorderSubtle,
                           }
                         ]}
                         onPress={() => setIntensity(lvl)}
                       >
-                        <Text style={[s.intensityText, { color: isSelected ? (isDark ? '#34D399' : '#059669') : themeColors.textSecondary }, isSelected && { fontWeight: '700' }]}>
+                        <Text
+                          style={[
+                            s.intensityText,
+                            { color: isSelected ? tokens.colors.primary : tokens.colors.textSecondary },
+                            isSelected && { fontWeight: '700' }
+                          ]}
+                        >
                           {lvl.charAt(0).toUpperCase() + lvl.slice(1)}
                         </Text>
                       </TouchableOpacity>
@@ -309,32 +371,55 @@ export default function LogWorkoutModal({ visible, onClose, userWeight, onWorkou
             </View>
 
             {/* Calorie Burn Preview */}
-            <View style={[glassStyles.cardSubtle, s.burnCard]}>
+            <View
+              style={[
+                s.burnCard,
+                {
+                  backgroundColor: isDark ? 'rgba(255, 77, 77, 0.10)' : 'rgba(224, 58, 58, 0.08)',
+                  borderColor: isDark ? 'rgba(255, 77, 77, 0.35)' : 'rgba(224, 58, 58, 0.25)',
+                }
+              ]}
+            >
               <View style={s.burnLeft}>
-                <Ionicons name="flame" size={26} color={isDark ? '#F87171' : '#DC2626'} />
+                <Icon name="flame" size={26} color={tokens.colors.calories} />
                 <View>
-                  <Text style={[s.burnTitle, { color: themeColors.textPrimary }]}>Estimated Burn</Text>
-                  <Text style={[s.burnSub, { color: themeColors.textSecondary }]}>
+                  <Text style={[s.burnTitle, { color: tokens.colors.textPrimary }]}>Estimated Burn</Text>
+                  <Text style={[s.burnSub, { color: tokens.colors.textSecondary }]}>
                     MET calc ({workoutType}, {durationMin || 0}m, {intensity})
                   </Text>
                 </View>
               </View>
-              <Text style={[s.burnVal, { color: isDark ? '#F87171' : '#DC2626' }]}>{estimatedBurn} <Text style={[s.burnUnit, { color: themeColors.textSecondary }]}>kcal</Text></Text>
+              <Text style={[s.burnVal, { color: tokens.colors.calories }]}>
+                {estimatedBurn} <Text style={[s.burnUnit, { color: tokens.colors.textSecondary }]}>kcal</Text>
+              </Text>
             </View>
 
             {!userWeight && (
-              <View style={[s.weightNotice, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(217, 119, 6, 0.10)', borderColor: isDark ? 'rgba(245, 158, 11, 0.25)' : 'rgba(217, 119, 6, 0.20)' }]}>
-                <Ionicons name="information-circle-outline" size={16} color={isDark ? '#FBBF24' : '#D97706'} />
-                <Text style={[s.weightNoticeText, { color: isDark ? '#FCD34D' : '#B45309' }]}>
+              <View
+                style={[
+                  s.weightNotice,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 184, 0, 0.15)' : 'rgba(224, 154, 0, 0.12)',
+                    borderColor: isDark ? 'rgba(255, 184, 0, 0.30)' : 'rgba(224, 154, 0, 0.25)',
+                  }
+                ]}
+              >
+                <Icon name="information-circle-outline" size={16} color={tokens.colors.warning} />
+                <Text style={[s.weightNoticeText, { color: tokens.colors.warning }]}>
                   Using default weight (75kg). Update weight in Profile for precision.
                 </Text>
               </View>
             )}
 
-            <TouchableOpacity style={s.saveBtn} onPress={handleSave}>
-              <Ionicons name="checkmark-circle" size={18} color="#fff" />
-              <Text style={s.saveBtnText}>Save Workout</Text>
-            </TouchableOpacity>
+            <View style={s.buttonWrap}>
+              <LiquidButton
+                title="Save Workout"
+                icon="checkmark-circle"
+                onPress={handleSave}
+                variant="primary"
+                shimmer
+              />
+            </View>
           </ScrollView>
         </View>
       </View>
@@ -345,56 +430,78 @@ export default function LogWorkoutModal({ visible, onClose, userWeight, onWorkou
 const s = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
     maxHeight: '90%',
     padding: 20,
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 20,
+  },
+  handleContainer: { alignItems: 'center', marginBottom: 12 },
+  handle: { width: 36, height: 4, borderRadius: 2 },
+  specularLine: {
+    position: 'absolute',
+    top: 0,
+    left: 20,
+    right: 20,
+    height: 1,
   },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerTitle: { fontSize: 18, fontWeight: '700' },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  iconBox: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', letterSpacing: -0.15 },
   scroll: { marginBottom: 8 },
-  presetHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 8 },
-  sectionLabel: { fontSize: 13, fontWeight: '600' },
+  presetHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, marginBottom: 8 },
+  sectionLabel: { fontSize: 13, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
   addPresetLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  addPresetLinkText: { fontSize: 12, fontWeight: '700' },
-  savePresetBox: { borderRadius: 16, padding: 12, marginBottom: 10, gap: 6 },
-  savePresetTitle: { fontSize: 12, fontWeight: '700' },
+  addPresetLinkText: { fontSize: 12, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
+  savePresetBox: { borderRadius: 16, padding: 12, marginBottom: 12, gap: 6, borderWidth: 1 },
+  savePresetTitle: { fontSize: 12, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
   savePresetRow: { flexDirection: 'row', gap: 8 },
-  savePresetInput: { flex: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, fontSize: 13 },
-  savePresetConfirmBtn: { backgroundColor: '#10B981', borderRadius: 10, paddingHorizontal: 14, justifyContent: 'center' },
-  savePresetConfirmText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
-  savePresetSub: { fontSize: 10 },
-  presetScroll: { flexDirection: 'row', marginBottom: 12 },
+  savePresetInput: { flex: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, fontSize: 13, fontFamily: 'PlusJakartaSans_500Medium', borderWidth: 1 },
+  savePresetConfirmBtn: { borderRadius: 10, paddingHorizontal: 14, justifyContent: 'center' },
+  savePresetConfirmText: { fontSize: 12, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
+  savePresetSub: { fontSize: 12, fontFamily: 'PlusJakartaSans_500Medium' },
+  presetScroll: { flexDirection: 'row', marginBottom: 14 },
   presetChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, marginRight: 8 },
-  customPresetChip: { borderWidth: 1 },
-  presetMainClick: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  presetText: { fontSize: 12, fontWeight: '600' },
-  customPresetText: { color: '#34D399' },
-  presetTrashIcon: { marginLeft: 4, padding: 2 },
+  presetText: { fontSize: 12, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
+  presetTrashIcon: { marginLeft: 2 },
   typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
   typeCard: { width: '31%', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center', gap: 5, borderWidth: 1 },
-  selectedTypeCard: { backgroundColor: 'rgba(16, 185, 129, 0.18)', borderColor: '#10B981' },
-  typeText: { fontSize: 11, fontWeight: '600', textAlign: 'center' },
-  selectedTypeText: { fontWeight: '700' },
-  rowTwo: { flexDirection: 'row', gap: 12, marginTop: 4 },
+  typeText: { fontSize: 12, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold', textAlign: 'center' },
+  rowTwo: { flexDirection: 'row', gap: 12, marginTop: 12 },
   halfCol: { flex: 1 },
-  inputBox: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 0 },
-  input: { flex: 1, fontSize: 16, fontWeight: '700', paddingVertical: 10 },
-  inputUnit: { fontSize: 12, fontWeight: '600' },
-  intensityRow: { flexDirection: 'column', gap: 4 },
+  inputBox: { borderWidth: 1, borderRadius: 14, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 },
+  input: { flex: 1, fontSize: 16, fontWeight: '700', fontFamily: 'SpaceGrotesk_700Bold', fontVariant: ['tabular-nums'], paddingVertical: 10 },
+  inputUnit: { fontSize: 12, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
+  intensityRow: { flexDirection: 'column', gap: 4, marginTop: 4 },
   intensityChip: { borderRadius: 10, paddingVertical: 6, alignItems: 'center', borderWidth: 1 },
-  selectedIntensityChip: { backgroundColor: 'rgba(16, 185, 129, 0.2)', borderColor: '#10B981' },
-  intensityText: { fontSize: 11, fontWeight: '600' },
-  selectedIntensityText: { fontWeight: '700' },
-  burnCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderRadius: 18, padding: 14, marginTop: 16 },
+  intensityText: { fontSize: 12, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
+  burnCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderRadius: 18, padding: 14, marginTop: 16, borderWidth: 1 },
   burnLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  burnTitle: { fontSize: 14, fontWeight: '700' },
-  burnSub: { fontSize: 11 },
-  burnVal: { fontSize: 20, fontWeight: '800' },
-  burnUnit: { fontSize: 12, fontWeight: '500' },
+  burnTitle: { fontSize: 14, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
+  burnSub: { fontSize: 12, fontFamily: 'PlusJakartaSans_500Medium' },
+  burnVal: { fontSize: 20, fontWeight: '700', fontFamily: 'SpaceGrotesk_700Bold', fontVariant: ['tabular-nums'] },
+  burnUnit: { fontSize: 12, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
   weightNotice: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, borderRadius: 12, marginTop: 12, borderWidth: 1 },
-  weightNoticeText: { fontSize: 11, flex: 1 },
-  saveBtn: { backgroundColor: '#10B981', borderRadius: 14, paddingVertical: 13, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 7, marginTop: 18, marginBottom: 16 },
-  saveBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  weightNoticeText: { fontSize: 12, flex: 1, lineHeight: 17, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
+  modalCloseBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...(Platform.OS === 'web' ? {
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      outlineStyle: 'none',
+      cursor: 'pointer',
+    } : {}),
+  },
+  buttonWrap: { marginTop: 18, marginBottom: 16 },
 });

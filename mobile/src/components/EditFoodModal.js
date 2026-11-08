@@ -9,21 +9,24 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { updateFoodLog } from '../services/database';
 import { analyzeTextWithGemini } from '../services/aiService';
 import { useTheme } from '../context/ThemeContext';
+import LiquidButton from './primitives/LiquidButton';
+import Icon from './ui/Icon';
 
 const MEAL_TYPES = [
-  { key: 'breakfast', label: 'Breakfast', icon: 'sunny-outline',      color: '#FBBF24' },
-  { key: 'lunch',     label: 'Lunch',     icon: 'fast-food-outline',  color: '#34D399' },
-  { key: 'dinner',    label: 'Dinner',    icon: 'restaurant-outline', color: '#818CF8' },
-  { key: 'snack',     label: 'Snack',     icon: 'nutrition-outline',  color: '#F472B6' },
+  { key: 'breakfast', label: 'Breakfast', icon: 'sunny-outline' },
+  { key: 'lunch',     label: 'Lunch',     icon: 'fast-food-outline' },
+  { key: 'dinner',    label: 'Dinner',    icon: 'restaurant-outline' },
+  { key: 'snack',     label: 'Snack',     icon: 'nutrition-outline' },
 ];
 
 export default function EditFoodModal({ visible, item, onClose, onSaved }) {
-  const { isDark, themeColors, glassStyles } = useTheme();
+  const { isDark, tokens } = useTheme();
 
   const isSubmittingRef = useRef(false);
   const [editName, setEditName] = useState('');
@@ -173,20 +176,19 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
     );
   };
 
-  // Qty change handler (for piece unit types)
+  // Piece quantity handler
   const handleItemQtyChange = (id, rawText) => {
     setItemsList((prev) =>
       prev.map((it) => {
         if (it.id !== id) return it;
-        const qty = rawText === '' ? '' : rawText;
-        const numQty = parseInt(rawText);
-        if (!isNaN(numQty) && numQty > 0) {
-          const gpp = typeof it.gramsPerPiece === 'number' ? it.gramsPerPiece : 50;
-          const newG = numQty * gpp;
+        const qty = parseInt(rawText, 10);
+        const gpp = typeof it.gramsPerPiece === 'number' ? it.gramsPerPiece : 50;
+        if (!isNaN(qty) && qty > 0) {
+          const newG = qty * gpp;
           const scale = it.origGrams > 0 ? newG / it.origGrams : 1;
           return {
             ...it,
-            quantity: qty,
+            quantity: rawText,
             grams: String(newG),
             calories: Math.round(it.origCals * scale),
             protein: Math.round(it.origProtein * scale),
@@ -196,7 +198,7 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
             dirty: true,
           };
         }
-        return { ...it, quantity: qty, dirty: true };
+        return { ...it, quantity: rawText, dirty: true };
       })
     );
   };
@@ -205,7 +207,7 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
     setItemsList((prev) =>
       prev.map((it) => {
         if (it.id !== id) return it;
-        const clamped = Math.max(1, parseInt(it.quantity) || 1);
+        const clamped = Math.max(1, parseInt(it.quantity, 10) || 1);
         const gpp = typeof it.gramsPerPiece === 'number' ? it.gramsPerPiece : 50;
         const newG = clamped * gpp;
         const scale = it.origGrams > 0 ? newG / it.origGrams : 1;
@@ -258,7 +260,7 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
         origCarbs: 0,
         origFat: 0,
         origFiber: 0,
-        isNew: true, // Newly added item name is editable
+        isNew: true,
         dirty: true,
       },
     ]);
@@ -339,7 +341,7 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
             origCarbs: Math.round(Number(fi.carbs) || 0),
             origFat: Math.round(Number(fi.fat) || 0),
             origFiber: Math.round(Number(fi.fiber) || 0),
-            isNew: false, // Food names are read-only for existing items
+            isNew: false,
             dirty: false,
           };
         });
@@ -348,28 +350,29 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
         setIsLegacyBlob(false);
       }
     } catch (err) {
-      Alert.alert('Re-Analysis Error', err?.message || String(err) || 'Failed to re-analyze food.');
+      Alert.alert('Analysis Failed', err.message || 'Could not re-analyze items with Gemini.');
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  // Save changes to Firestore
+  // Submit and save updated meal
   const handleSave = async () => {
     if (isSubmittingRef.current || saving) return;
 
-    const trimmedName = editName.trim();
-    if (!trimmedName) {
-      Alert.alert('Validation Error', 'Meal title cannot be empty.');
+    if (!editName.trim()) {
+      Alert.alert('Name Required', 'Please enter a name for this meal.');
       return;
     }
+
     if (itemsList.length === 0) {
-      Alert.alert('Validation Error', 'Meal must contain at least one food item.');
+      Alert.alert('Items Required', 'Meal must have at least one food item.');
       return;
     }
 
     isSubmittingRef.current = true;
     setSaving(true);
+
     try {
       const totalGrams = itemsList.reduce((acc, i) => acc + (parseFloat(i.grams) || 0), 0);
       const totalCals = itemsList.reduce((acc, i) => acc + (Number(i.calories) || 0), 0);
@@ -378,29 +381,8 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
       const totalFat = itemsList.reduce((acc, i) => acc + (Number(i.fat) || 0), 0);
       const totalFiber = itemsList.reduce((acc, i) => acc + (Number(i.fiber) || 0), 0);
 
-      // Clean formatted items array
-      const formattedItems = itemsList.map((it) => ({
-        id: it.id || `item_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-        name: (it.name || '').trim() || 'Food Item',
-        grams: String(Math.round(parseFloat(it.grams) || 0)),
-        calories: Math.round(Number(it.calories) || 0),
-        protein: Math.round(Number(it.protein) || 0),
-        carbs: Math.round(Number(it.carbs) || 0),
-        fat: Math.round(Number(it.fat) || 0),
-        fiber: Math.round(Number(it.fiber) || 0),
-        unit_type: it.unit_type || 'weight',
-        quantity: it.quantity ?? null,
-        gramsPerPiece: it.gramsPerPiece ?? null,
-        origGrams: it.origGrams || Math.round(parseFloat(it.grams) || 0),
-        origCals: it.origCals || Math.round(Number(it.calories) || 0),
-        origProtein: it.origProtein || Math.round(Number(it.protein) || 0),
-        origCarbs: it.origCarbs || Math.round(Number(it.carbs) || 0),
-        origFat: it.origFat || Math.round(Number(it.fat) || 0),
-        origFiber: it.origFiber || Math.round(Number(it.fiber) || 0),
-      }));
-
-      const updatedData = {
-        name: trimmedName,
+      const updatedPayload = {
+        name: editName.trim(),
         meal_type: mealType,
         grams_estimate: Math.round(totalGrams),
         calories: totalCals,
@@ -408,44 +390,60 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
         carbs: totalCarbs,
         fat: totalFat,
         fiber: totalFiber,
-        items: formattedItems,
+        items: itemsList,
       };
 
-      const updated = await updateFoodLog(item.id, updatedData);
+      const result = await updateFoodLog(item.id, updatedPayload);
 
       if (onSaved) {
-        onSaved(
-          updated || {
-            ...item,
-            ...updatedData,
-          }
-        );
+        onSaved(result || { ...item, ...updatedPayload });
       }
-      onClose();
+      handleClose();
     } catch (err) {
-      Alert.alert('Save Error', err?.message || String(err) || 'Failed to save changes.');
+      Alert.alert('Save Failed', err.message || 'Failed to update food entry.');
     } finally {
       isSubmittingRef.current = false;
       setSaving(false);
     }
   };
 
-  // Combined totals calculation across ALL items
   const totalGrams = itemsList.reduce((acc, i) => acc + (parseFloat(i.grams) || 0), 0);
   const totalCals = itemsList.reduce((acc, i) => acc + (Number(i.calories) || 0), 0);
   const totalProtein = itemsList.reduce((acc, i) => acc + (Number(i.protein) || 0), 0);
   const totalCarbs = itemsList.reduce((acc, i) => acc + (Number(i.carbs) || 0), 0);
   const totalFat = itemsList.reduce((acc, i) => acc + (Number(i.fat) || 0), 0);
 
+  const isWeb = Platform.OS === 'web';
+
   return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={handleClose}>
-      <View
-        style={[
-          styles.overlay,
-          { backgroundColor: isDark ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.4)' },
-        ]}
-      >
-        <View style={[glassStyles.modalContent, styles.sheet]}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
+      <View style={[styles.overlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.72)' : 'rgba(15,23,42,0.45)' }]}>
+        <View
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: isDark ? tokens.colors.liquidGlassBg : tokens.colors.glassBg,
+              borderColor: tokens.colors.glassBorder,
+              shadowColor: tokens.colors.glassShadow,
+            },
+            isWeb && {
+              backdropFilter: `blur(${tokens.blur.sheet}px) saturate(160%)`,
+              WebkitBackdropFilter: `blur(${tokens.blur.sheet}px) saturate(160%)`,
+            }
+          ]}
+        >
+          {Platform.OS !== 'web' && (
+            <BlurView intensity={tokens.blur.sheet} tint={tokens.blur.tint} style={StyleSheet.absoluteFill} />
+          )}
+
+          {/* Grab Handle */}
+          <View style={styles.handleContainer}>
+            <View style={[styles.handle, { backgroundColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(15,23,42,0.18)' }]} />
+          </View>
+
+          {/* Specular line */}
+          <View style={[styles.specularLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.7)' }]} />
+
           {/* Modal Header */}
           <View style={styles.header}>
             <View style={styles.headerRow}>
@@ -453,54 +451,55 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                 style={[
                   styles.editIconBadge,
                   {
-                    borderColor: isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(16, 185, 129, 0.3)',
-                    backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)',
+                    backgroundColor: isDark ? 'rgba(16, 232, 160, 0.15)' : 'rgba(0, 179, 119, 0.12)',
+                    borderColor: tokens.colors.primary,
                   },
                 ]}
               >
-                <Ionicons name="pencil-outline" size={18} color={isDark ? '#34D399' : '#059669'} />
+                <Icon name="pencil" size={16} color={tokens.colors.primary} />
               </View>
-              <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>
-                Edit Food Entry
-              </Text>
+              <Text style={[styles.headerTitle, { color: tokens.colors.textPrimary }]}>Edit Meal Entry</Text>
             </View>
-            <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={22} color={themeColors.textMuted} />
+            <TouchableOpacity
+              onPress={handleClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              style={[
+                styles.modalCloseBtn,
+                {
+                  backgroundColor: tokens.liquidGlass.fill,
+                  borderColor: tokens.liquidGlass.rim,
+                }
+              ]}
+            >
+              <Icon name="close" size={20} color={tokens.text.primary} />
             </TouchableOpacity>
           </View>
 
           {isAnalyzing ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={isDark ? '#34D399' : '#059669'} />
-              <Text style={[styles.loadingTitle, { color: themeColors.textPrimary }]}>
-                Re-Analyzing Food Portions…
-              </Text>
-              <Text style={[styles.loadingSub, { color: themeColors.textSecondary }]}>
-                {statusMsg}
-              </Text>
+              <ActivityIndicator size="large" color={tokens.colors.primary} />
+              <Text style={[styles.loadingTitle, { color: tokens.colors.textPrimary }]}>Analyzing with Gemini…</Text>
+              <Text style={[styles.loadingSub, { color: tokens.colors.textSecondary }]}>{statusMsg}</Text>
             </View>
           ) : (
-            <ScrollView
-              style={styles.scroll}
-              contentContainerStyle={{ paddingBottom: 16 }}
-              keyboardShouldPersistTaps="handled"
-            >
+            <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <View
                 style={[
                   styles.reviewCard,
                   {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.85)',
-                    borderColor: isDark ? 'rgba(16, 185, 129, 0.35)' : 'rgba(16, 185, 129, 0.25)',
+                    backgroundColor: tokens.colors.neuBase,
+                    borderColor: tokens.colors.cardBorderSubtle,
                   },
                 ]}
               >
                 <View style={styles.reviewHead}>
-                  <Ionicons name="create-outline" size={19} color={isDark ? '#34D399' : '#059669'} />
-                  <Text style={[styles.reviewTitle, { color: themeColors.textPrimary }]}>
+                  <Icon name="create-outline" size={18} color={tokens.colors.primary} />
+                  <Text style={[styles.reviewTitle, { color: tokens.colors.textPrimary }]}>
                     Review Individual Food Portions
                   </Text>
                 </View>
-                <Text style={[styles.reviewSub, { color: themeColors.textSecondary }]}>
+                <Text style={[styles.reviewSub, { color: tokens.colors.textSecondary }]}>
                   Adjust portion weight for each item below before saving.
                 </Text>
 
@@ -510,19 +509,18 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                     style={[
                       styles.legacyBanner,
                       {
-                        backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.10)',
-                        borderColor: isDark ? 'rgba(245, 158, 11, 0.35)' : 'rgba(245, 158, 11, 0.25)',
+                        backgroundColor: isDark ? 'rgba(255, 184, 0, 0.15)' : 'rgba(224, 154, 0, 0.12)',
+                        borderColor: tokens.colors.warning,
                       },
                     ]}
                     onPress={handleReAnalyzeAll}
-
                   >
-                    <Ionicons name="sparkles" size={16} color="#F59E0B" />
+                    <Icon name="sparkles" size={16} color={tokens.colors.warning} />
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.legacyBannerTitle, { color: isDark ? '#FBBF24' : '#D97706' }]}>
+                      <Text style={[styles.legacyBannerTitle, { color: tokens.colors.warning }]}>
                         Combined Meal Entry Detected
                       </Text>
-                      <Text style={[styles.legacyBannerSub, { color: themeColors.textSecondary }]}>
+                      <Text style={[styles.legacyBannerSub, { color: tokens.colors.textSecondary }]}>
                         Tap here to automatically split into individual food cards with separate weights.
                       </Text>
                     </View>
@@ -530,26 +528,26 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                 )}
 
                 {/* Meal Title Input */}
-                <Text style={[styles.fieldLabel, { color: themeColors.textPrimary }]}>
+                <Text style={[styles.fieldLabel, { color: tokens.colors.textPrimary }]}>
                   Meal Title
                 </Text>
                 <TextInput
                   style={[
                     styles.input,
                     {
-                      color: themeColors.textPrimary,
-                      backgroundColor: themeColors.inputBg,
-                      borderColor: themeColors.inputBorder,
+                      color: tokens.colors.textPrimary,
+                      backgroundColor: tokens.colors.inputBg,
+                      borderColor: tokens.colors.inputBorder,
                     },
                   ]}
                   value={editName}
                   onChangeText={setEditName}
                   placeholder="Meal Title"
-                  placeholderTextColor={themeColors.placeholder}
+                  placeholderTextColor={tokens.colors.placeholder}
                 />
 
                 {/* Meal Type Selector */}
-                <Text style={[styles.fieldLabel, { color: themeColors.textPrimary, marginTop: 12 }]}>
+                <Text style={[styles.fieldLabel, { color: tokens.colors.textPrimary, marginTop: 12 }]}>
                   Meal Type
                 </Text>
                 <View style={styles.mealRow}>
@@ -562,29 +560,26 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                           styles.mealPill,
                           {
                             backgroundColor: isSelected
-                              ? `${t.color}22`
-                              : isDark
-                              ? 'rgba(255, 255, 255, 0.06)'
-                              : 'rgba(0, 0, 0, 0.04)',
+                              ? (isDark ? 'rgba(16, 232, 160, 0.18)' : 'rgba(0, 179, 119, 0.14)')
+                              : (isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.04)'),
                             borderColor: isSelected
-                              ? t.color
-                              : isDark
-                              ? 'rgba(255, 255, 255, 0.1)'
-                              : 'rgba(0, 0, 0, 0.08)',
+                              ? tokens.colors.primary
+                              : tokens.colors.cardBorderSubtle,
+                            ...(Platform.OS === 'web' ? { outlineStyle: 'none', cursor: 'pointer' } : {}),
                           },
                         ]}
                         onPress={() => setMealType(t.key)}
                         activeOpacity={0.75}
                       >
-                        <Ionicons
+                        <Icon
                           name={t.icon}
                           size={13}
-                          color={isSelected ? t.color : themeColors.textMuted}
+                          color={isSelected ? tokens.colors.primary : tokens.colors.textMuted}
                         />
                         <Text
                           style={[
                             styles.mealText,
-                            { color: isSelected ? t.color : themeColors.textSecondary },
+                            { color: isSelected ? tokens.colors.primary : tokens.colors.textSecondary },
                             isSelected && { fontWeight: '700' },
                           ]}
                         >
@@ -598,10 +593,10 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                 {/* Food Items Breakdown */}
                 <View style={styles.itemsSection}>
                   <View style={styles.sectionHeaderRow}>
-                    <Text style={[styles.sectionHeaderLabel, { color: isDark ? '#34D399' : '#059669' }]}>
+                    <Text style={[styles.sectionHeaderLabel, { color: tokens.colors.primary }]}>
                       FOOD ITEMS ({itemsList.length})
                     </Text>
-                    <Text style={[styles.sectionHint, { color: themeColors.textMuted }]}>
+                    <Text style={[styles.sectionHint, { color: tokens.colors.textSecondary }]}>
                       Edit portion weight, then Re-analyze
                     </Text>
                   </View>
@@ -612,41 +607,39 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                       style={[
                         styles.itemCard,
                         {
-                          backgroundColor: isDark
-                            ? 'rgba(255, 255, 255, 0.05)'
-                            : 'rgba(0, 0, 0, 0.03)',
-                          borderColor: themeColors.cardBorderSubtle,
+                          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(15, 23, 42, 0.03)',
+                          borderColor: tokens.colors.cardBorderSubtle,
                         },
                       ]}
                     >
                       {/* Food Name Row */}
                       <View style={styles.itemNameRow}>
-                        <Ionicons
+                        <Icon
                           name="restaurant-outline"
                           size={15}
-                          color={isDark ? '#34D399' : '#059669'}
+                          color={tokens.colors.primary}
                         />
                         {itemObj.isNew ? (
                           <TextInput
                             style={[
                               styles.itemNameInput,
                               {
-                                color: themeColors.textPrimary,
-                                backgroundColor: themeColors.inputBg,
-                                borderColor: themeColors.inputBorder,
+                                color: tokens.colors.textPrimary,
+                                backgroundColor: tokens.colors.inputBg,
+                                borderColor: tokens.colors.inputBorder,
                               },
                             ]}
                             value={itemObj.name}
                             onChangeText={(txt) => handleItemNameChange(itemObj.id, txt)}
                             placeholder="Food name (e.g. Cooked Chicken)"
-                            placeholderTextColor={themeColors.placeholder}
+                            placeholderTextColor={tokens.colors.placeholder}
                           />
                         ) : (
                           <View style={styles.lockedNameContainer}>
                             <Text
                               style={[
                                 styles.lockedNameText,
-                                { color: themeColors.textPrimary },
+                                { color: tokens.colors.textPrimary },
                               ]}
                               numberOfLines={1}
                             >
@@ -658,20 +651,20 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                                 {
                                   backgroundColor: isDark
                                     ? 'rgba(255, 255, 255, 0.08)'
-                                    : 'rgba(0, 0, 0, 0.05)',
+                                    : 'rgba(15, 23, 42, 0.05)',
                                 },
                               ]}
                             >
-                              <Ionicons name="lock-closed" size={11} color={themeColors.textMuted} />
+                              <Icon name="lock-closed" size={11} color={tokens.colors.textMuted} />
                             </View>
                           </View>
                         )}
-                        {itemObj.dirty && <View style={styles.dirtyDot} />}
+                        {itemObj.dirty && <View style={[styles.dirtyDot, { backgroundColor: tokens.colors.warning }]} />}
                         <TouchableOpacity
                           onPress={() => handleDeleteItem(itemObj.id)}
                           style={styles.deleteBtn}
                         >
-                          <Ionicons name="close" size={16} color="#F87171" />
+                          <Icon name="close" size={16} color={tokens.colors.danger} />
                         </TouchableOpacity>
                       </View>
 
@@ -679,7 +672,7 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                       {itemObj.unit_type === 'piece' ? (
                         <View style={styles.pieceRow}>
                           <View style={styles.pieceField}>
-                            <Text style={[styles.pieceLabel, { color: themeColors.textSecondary }]}>
+                            <Text style={[styles.pieceLabel, { color: tokens.colors.textSecondary }]}>
                               Qty
                             </Text>
                             <View style={styles.gramBox}>
@@ -687,9 +680,9 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                                 style={[
                                   styles.gramInput,
                                   {
-                                    color: isDark ? '#34D399' : '#059669',
-                                    backgroundColor: themeColors.inputBg,
-                                    borderColor: themeColors.inputBorder,
+                                    color: tokens.colors.primary,
+                                    backgroundColor: tokens.colors.inputBg,
+                                    borderColor: tokens.colors.inputBorder,
                                   },
                                 ]}
                                 keyboardType="numeric"
@@ -697,18 +690,18 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                                 onChangeText={(t) => handleItemQtyChange(itemObj.id, t)}
                                 onBlur={() => handleItemQtyBlur(itemObj.id)}
                               />
-                              <Text style={[styles.gramUnit, { color: themeColors.textSecondary }]}>
+                              <Text style={[styles.gramUnit, { color: tokens.colors.textSecondary }]}>
                                 pcs
                               </Text>
                             </View>
                           </View>
-                          <Text style={[styles.pieceMult, { color: themeColors.textMuted }]}>×</Text>
+                          <Text style={[styles.pieceMult, { color: tokens.colors.textSecondary }]}>×</Text>
                           <View style={styles.pieceField}>
-                            <Text style={[styles.pieceLabel, { color: themeColors.textSecondary }]}>
+                            <Text style={[styles.pieceLabel, { color: tokens.colors.textSecondary }]}>
                               g / piece
                             </Text>
                             <View style={styles.gramBox}>
-                              <Text style={[styles.gramInputText, { color: themeColors.textSecondary }]}>
+                              <Text style={[styles.gramInputText, { color: tokens.colors.textSecondary }]}>
                                 {itemObj.gramsPerPiece ?? 50}g
                               </Text>
                             </View>
@@ -718,25 +711,23 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                               styles.pieceTotalBox,
                               {
                                 backgroundColor: isDark
-                                  ? 'rgba(16, 185, 129, 0.15)'
-                                  : 'rgba(16, 185, 129, 0.10)',
-                                borderColor: isDark
-                                  ? 'rgba(16, 185, 129, 0.3)'
-                                  : 'rgba(16, 185, 129, 0.25)',
+                                  ? 'rgba(16, 232, 160, 0.15)'
+                                  : 'rgba(0, 179, 119, 0.12)',
+                                borderColor: tokens.colors.primary,
                               },
                             ]}
                           >
-                            <Text style={[styles.pieceTotalLabel, { color: themeColors.textSecondary }]}>
+                            <Text style={[styles.pieceTotalLabel, { color: tokens.colors.textSecondary }]}>
                               Total
                             </Text>
-                            <Text style={[styles.pieceTotalVal, { color: isDark ? '#34D399' : '#059669' }]}>
+                            <Text style={[styles.pieceTotalVal, { color: tokens.colors.primary }]}>
                               {Math.round(parseFloat(itemObj.grams) || 0)}g
                             </Text>
                           </View>
                         </View>
                       ) : (
                         <View style={styles.itemGramRow}>
-                          <Text style={[styles.itemGramLabel, { color: themeColors.textSecondary }]}>
+                          <Text style={[styles.itemGramLabel, { color: tokens.colors.textSecondary }]}>
                             Portion weight:
                           </Text>
                           <View style={styles.gramBox}>
@@ -744,9 +735,9 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                               style={[
                                 styles.gramInput,
                                 {
-                                  color: isDark ? '#34D399' : '#059669',
-                                  backgroundColor: themeColors.inputBg,
-                                  borderColor: themeColors.inputBorder,
+                                  color: tokens.colors.primary,
+                                  backgroundColor: tokens.colors.inputBg,
+                                  borderColor: tokens.colors.inputBorder,
                                 },
                               ]}
                               keyboardType="numeric"
@@ -754,7 +745,7 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                               onChangeText={(txt) => handleItemGramsChange(itemObj.id, txt)}
                               onBlur={() => handleItemGramsBlur(itemObj.id)}
                             />
-                            <Text style={[styles.gramUnit, { color: themeColors.textSecondary }]}>
+                            <Text style={[styles.gramUnit, { color: tokens.colors.textSecondary }]}>
                               g
                             </Text>
                           </View>
@@ -765,12 +756,10 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                       <View style={styles.itemMacroPills}>
                         <Text
                           style={[
-                            styles.macroPillCal,
+                            styles.macroPill,
                             {
-                              backgroundColor: isDark
-                                ? 'rgba(16, 185, 129, 0.2)'
-                                : 'rgba(16, 185, 129, 0.12)',
-                              color: isDark ? '#34D399' : '#059669',
+                              backgroundColor: isDark ? 'rgba(255, 77, 77, 0.18)' : 'rgba(224, 58, 58, 0.12)',
+                              color: tokens.colors.calories,
                             },
                           ]}
                         >
@@ -780,10 +769,8 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                           style={[
                             styles.macroPill,
                             {
-                              color: themeColors.textSecondary,
-                              backgroundColor: isDark
-                                ? 'rgba(255, 255, 255, 0.08)'
-                                : 'rgba(0, 0, 0, 0.05)',
+                              color: tokens.colors.protein,
+                              backgroundColor: isDark ? 'rgba(0, 210, 255, 0.15)' : 'rgba(0, 144, 200, 0.12)',
                             },
                           ]}
                         >
@@ -793,10 +780,8 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                           style={[
                             styles.macroPill,
                             {
-                              color: themeColors.textSecondary,
-                              backgroundColor: isDark
-                                ? 'rgba(255, 255, 255, 0.08)'
-                                : 'rgba(0, 0, 0, 0.05)',
+                              color: tokens.colors.carbs,
+                              backgroundColor: isDark ? 'rgba(255, 184, 0, 0.15)' : 'rgba(224, 154, 0, 0.12)',
                             },
                           ]}
                         >
@@ -806,10 +791,8 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                           style={[
                             styles.macroPill,
                             {
-                              color: themeColors.textSecondary,
-                              backgroundColor: isDark
-                                ? 'rgba(255, 255, 255, 0.08)'
-                                : 'rgba(0, 0, 0, 0.05)',
+                              color: tokens.colors.fats,
+                              backgroundColor: isDark ? 'rgba(255, 45, 120, 0.15)' : 'rgba(224, 36, 94, 0.12)',
                             },
                           ]}
                         >
@@ -819,10 +802,8 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                           style={[
                             styles.macroPill,
                             {
-                              color: themeColors.textSecondary,
-                              backgroundColor: isDark
-                                ? 'rgba(255, 255, 255, 0.08)'
-                                : 'rgba(0, 0, 0, 0.05)',
+                              color: tokens.colors.fiber,
+                              backgroundColor: isDark ? 'rgba(74, 222, 128, 0.15)' : 'rgba(34, 165, 89, 0.12)',
                             },
                           ]}
                         >
@@ -837,45 +818,38 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                     style={[
                       styles.addItemBtn,
                       {
-                        backgroundColor: isDark
-                          ? 'rgba(16, 185, 129, 0.15)'
-                          : 'rgba(16, 185, 129, 0.10)',
-                        borderColor: isDark
-                          ? 'rgba(16, 185, 129, 0.35)'
-                          : 'rgba(16, 185, 129, 0.25)',
+                        backgroundColor: isDark ? 'rgba(16, 232, 160, 0.12)' : 'rgba(0, 179, 119, 0.08)',
+                        borderColor: tokens.colors.primary,
                       },
                     ]}
                     onPress={handleAddItem}
                   >
-                    <Ionicons
-                      name="add-circle-outline"
-                      size={16}
-                      color={isDark ? '#34D399' : '#059669'}
-                    />
-                    <Text
-                      style={[
-                        styles.addItemText,
-                        { color: isDark ? '#34D399' : '#059669' },
-                      ]}
-                    >
+                    <Icon name="add-circle-outline" size={16} color={tokens.colors.primary} />
+                    <Text style={[styles.addItemText, { color: tokens.colors.primary }]}>
                       Add a missed food item
                     </Text>
                   </TouchableOpacity>
 
                   {/* Re-analyze All Items Button */}
                   <TouchableOpacity
-                    style={styles.reAnalyzeAllBtn}
+                    style={[
+                      styles.reAnalyzeAllBtn,
+                      {
+                        backgroundColor: isDark ? 'rgba(139, 92, 246, 0.25)' : 'rgba(139, 92, 246, 0.15)',
+                        borderColor: tokens.colors.accentViolet,
+                      },
+                    ]}
                     onPress={handleReAnalyzeAll}
                   >
-                    <Ionicons name="sync-outline" size={15} color="#FFFFFF" />
-                    <Text style={styles.reAnalyzeAllText}>
+                    <Icon name="sync-outline" size={15} color={tokens.colors.accentViolet} />
+                    <Text style={[styles.reAnalyzeAllText, { color: tokens.colors.accentViolet }]}>
                       {itemsList.length === 1 ? 'Re-analyze & Split Items' : 'Re-analyze all items'}
                     </Text>
                   </TouchableOpacity>
                 </View>
 
                 {/* Scale Entire Meal */}
-                <Text style={[styles.fieldLabel, { color: themeColors.textPrimary }]}>
+                <Text style={[styles.fieldLabel, { color: tokens.colors.textPrimary }]}>
                   Scale Entire Meal
                 </Text>
                 <View style={styles.multRow}>
@@ -885,14 +859,13 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                       style={[
                         styles.multBtn,
                         {
-                          backgroundColor: isDark
-                            ? 'rgba(255, 255, 255, 0.08)'
-                            : 'rgba(0, 0, 0, 0.05)',
+                          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(15, 23, 42, 0.04)',
+                          borderColor: tokens.colors.cardBorderSubtle,
                         },
                       ]}
                       onPress={() => applyGlobalMultiplier(m)}
                     >
-                      <Text style={[styles.multText, { color: themeColors.textPrimary }]}>
+                      <Text style={[styles.multText, { color: tokens.colors.textPrimary }]}>
                         {m}x
                       </Text>
                     </TouchableOpacity>
@@ -904,53 +877,52 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                   style={[
                     styles.totalsCard,
                     {
-                      backgroundColor: isDark
-                        ? 'rgba(255, 255, 255, 0.05)'
-                        : 'rgba(0, 0, 0, 0.03)',
+                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(15, 23, 42, 0.03)',
+                      borderColor: tokens.colors.cardBorderSubtle,
                     },
                   ]}
                 >
-                  <Text style={[styles.totalsTitle, { color: themeColors.textPrimary }]}>
+                  <Text style={[styles.totalsTitle, { color: tokens.colors.textPrimary }]}>
                     Combined Meal Totals
                   </Text>
                   <View style={styles.totalsRow}>
                     <View style={styles.totalStat}>
-                      <Text style={[styles.totalStatNum, { color: themeColors.textPrimary }]}>
+                      <Text style={[styles.totalStatNum, { color: tokens.colors.textPrimary }]}>
                         {Math.round(totalGrams)}g
                       </Text>
-                      <Text style={[styles.totalStatSub, { color: themeColors.textSecondary }]}>
+                      <Text style={[styles.totalStatSub, { color: tokens.colors.textSecondary }]}>
                         Total Weight
                       </Text>
                     </View>
                     <View style={styles.totalStat}>
-                      <Text style={[styles.totalStatNum, { color: isDark ? '#34D399' : '#059669' }]}>
+                      <Text style={[styles.totalStatNum, { color: tokens.colors.calories }]}>
                         {totalCals}
                       </Text>
-                      <Text style={[styles.totalStatSub, { color: themeColors.textSecondary }]}>
+                      <Text style={[styles.totalStatSub, { color: tokens.colors.textSecondary }]}>
                         Calories
                       </Text>
                     </View>
                     <View style={styles.totalStat}>
-                      <Text style={[styles.totalStatNum, { color: themeColors.protein }]}>
+                      <Text style={[styles.totalStatNum, { color: tokens.colors.protein }]}>
                         {totalProtein}g
                       </Text>
-                      <Text style={[styles.totalStatSub, { color: themeColors.textSecondary }]}>
+                      <Text style={[styles.totalStatSub, { color: tokens.colors.textSecondary }]}>
                         Protein
                       </Text>
                     </View>
                     <View style={styles.totalStat}>
-                      <Text style={[styles.totalStatNum, { color: themeColors.carbs }]}>
+                      <Text style={[styles.totalStatNum, { color: tokens.colors.carbs }]}>
                         {totalCarbs}g
                       </Text>
-                      <Text style={[styles.totalStatSub, { color: themeColors.textSecondary }]}>
+                      <Text style={[styles.totalStatSub, { color: tokens.colors.textSecondary }]}>
                         Carbs
                       </Text>
                     </View>
                     <View style={styles.totalStat}>
-                      <Text style={[styles.totalStatNum, { color: themeColors.fat }]}>
+                      <Text style={[styles.totalStatNum, { color: tokens.colors.fats }]}>
                         {totalFat}g
                       </Text>
-                      <Text style={[styles.totalStatSub, { color: themeColors.textSecondary }]}>
+                      <Text style={[styles.totalStatSub, { color: tokens.colors.textSecondary }]}>
                         Fat
                       </Text>
                     </View>
@@ -958,20 +930,16 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
                 </View>
 
                 {/* Save Button */}
-                <TouchableOpacity
-                  style={[styles.saveBtn, saving && { opacity: 0.7 }]}
-                  onPress={handleSave}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
-                  ) : (
-                    <>
-                      <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
-                      <Text style={styles.saveBtnText}>Confirm & Save Changes</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
+                <View style={styles.modalBtnWrap}>
+                  <LiquidButton
+                    title={saving ? 'Saving...' : 'Confirm & Save Changes'}
+                    icon="checkmark-circle"
+                    onPress={handleSave}
+                    disabled={saving}
+                    variant="primary"
+                    shimmer
+                  />
+                </View>
               </View>
             </ScrollView>
           )}
@@ -984,10 +952,25 @@ export default function EditFoodModal({ visible, item, onClose, onSaved }) {
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
     maxHeight: '94%',
     padding: 20,
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 20,
+  },
+  handleContainer: { alignItems: 'center', marginBottom: 12 },
+  handle: { width: 36, height: 4, borderRadius: 2 },
+  specularLine: {
+    position: 'absolute',
+    top: 0,
+    left: 20,
+    right: 20,
+    height: 1,
   },
   header: {
     flexDirection: 'row',
@@ -1009,8 +992,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   headerTitle: { fontSize: 18, fontWeight: '700' },
-  closeBtn: { padding: 4 },
-
+  modalCloseBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...(Platform.OS === 'web' ? {
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      outlineStyle: 'none',
+      cursor: 'pointer',
+    } : {}),
+  },
   loadingContainer: {
     paddingVertical: 50,
     alignItems: 'center',
@@ -1038,15 +1033,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 12,
   },
-  legacyBannerTitle: { fontSize: 12, fontWeight: '800' },
-  legacyBannerSub: { fontSize: 11, marginTop: 2 },
+  legacyBannerTitle: { fontSize: 12, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
+  legacyBannerSub: { fontSize: 12, marginTop: 2, fontFamily: 'PlusJakartaSans_500Medium' },
 
-  fieldLabel: { fontSize: 13, fontWeight: '600', marginBottom: 6 },
+  fieldLabel: { fontSize: 13, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold', marginBottom: 6 },
   input: {
     borderRadius: 12,
     paddingHorizontal: 13,
     paddingVertical: 10,
     fontSize: 14,
+    fontFamily: 'PlusJakartaSans_500Medium',
     borderWidth: 1,
   },
   mealRow: { flexDirection: 'row', gap: 6, marginBottom: 14 },
@@ -1060,7 +1056,7 @@ const styles = StyleSheet.create({
     gap: 4,
     borderWidth: 1,
   },
-  mealText: { fontSize: 11, fontWeight: '600' },
+  mealText: { fontSize: 12, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
 
   itemsSection: { gap: 10, marginVertical: 12 },
   sectionHeaderRow: {
@@ -1068,8 +1064,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  sectionHeaderLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
-  sectionHint: { fontSize: 10 },
+  sectionHeaderLabel: { fontSize: 12, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', letterSpacing: 0.6 },
+  sectionHint: { fontSize: 12, fontFamily: 'PlusJakartaSans_500Medium' },
 
   itemCard: {
     borderRadius: 14,
@@ -1082,6 +1078,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
@@ -1096,6 +1093,7 @@ const styles = StyleSheet.create({
   lockedNameText: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
     flexShrink: 1,
   },
   lockBadge: {
@@ -1107,16 +1105,17 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#F59E0B',
   },
   deleteBtn: { padding: 4 },
 
   itemGramRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  itemGramLabel: { fontSize: 12, fontWeight: '500' },
+  itemGramLabel: { fontSize: 12, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
   gramBox: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   gramInput: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontVariant: ['tabular-nums'],
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
@@ -1127,13 +1126,14 @@ const styles = StyleSheet.create({
   gramInputText: {
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
   },
-  gramUnit: { fontSize: 12 },
+  gramUnit: { fontSize: 12, fontFamily: 'PlusJakartaSans_600SemiBold' },
 
   pieceRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   pieceField: { gap: 3 },
-  pieceLabel: { fontSize: 10 },
-  pieceMult: { fontSize: 16, marginTop: 12 },
+  pieceLabel: { fontSize: 12, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
+  pieceMult: { fontSize: 16, fontWeight: '700', fontFamily: 'SpaceGrotesk_700Bold', marginTop: 12 },
   pieceTotalBox: {
     marginLeft: 'auto',
     alignItems: 'center',
@@ -1142,20 +1142,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
   },
-  pieceTotalLabel: { fontSize: 9 },
-  pieceTotalVal: { fontSize: 13, fontWeight: '800' },
+  pieceTotalLabel: { fontSize: 12, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
+  pieceTotalVal: { fontSize: 14, fontWeight: '700', fontFamily: 'SpaceGrotesk_700Bold', fontVariant: ['tabular-nums'] },
 
   itemMacroPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
-  macroPillCal: {
-    fontSize: 11,
-    fontWeight: '700',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
   macroPill: {
-    fontSize: 11,
-    paddingHorizontal: 7,
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'SpaceGrotesk_600SemiBold',
+    fontVariant: ['tabular-nums'],
+    paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
@@ -1170,18 +1166,18 @@ const styles = StyleSheet.create({
     gap: 6,
     borderStyle: 'dashed',
   },
-  addItemText: { fontSize: 12, fontWeight: '700' },
+  addItemText: { fontSize: 12, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
 
   reAnalyzeAllBtn: {
-    backgroundColor: '#10B981',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
     borderRadius: 12,
+    borderWidth: 1,
     gap: 6,
   },
-  reAnalyzeAllText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  reAnalyzeAllText: { fontSize: 12, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
 
   multRow: { flexDirection: 'row', gap: 8, marginTop: 6, marginBottom: 12 },
   multBtn: {
@@ -1189,34 +1185,27 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 10,
     alignItems: 'center',
+    borderWidth: 1,
   },
-  multText: { fontSize: 12, fontWeight: '700' },
+  multText: { fontSize: 12, fontWeight: '700', fontFamily: 'SpaceGrotesk_700Bold', fontVariant: ['tabular-nums'] },
 
   totalsCard: {
     borderRadius: 14,
     padding: 12,
     marginBottom: 14,
+    borderWidth: 1,
   },
   totalsTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
     marginBottom: 8,
   },
   totalsRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
   totalStat: { alignItems: 'center' },
-  totalStatNum: { fontSize: 14, fontWeight: '800' },
-  totalStatSub: { fontSize: 9, marginTop: 2 },
-
-  saveBtn: {
-    backgroundColor: '#10B981',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 14,
-    gap: 8,
-  },
-  saveBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  totalStatNum: { fontSize: 14, fontWeight: '700', fontFamily: 'SpaceGrotesk_700Bold', fontVariant: ['tabular-nums'] },
+  totalStatSub: { fontSize: 12, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium', marginTop: 2 },
+  modalBtnWrap: { marginTop: 8, marginBottom: 6 },
 });
