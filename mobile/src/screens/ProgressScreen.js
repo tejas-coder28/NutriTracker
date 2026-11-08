@@ -1,19 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import Icon from '../components/ui/Icon';
 import { getAllWeightLogs, insertWeightLog, deleteWeightLog, getWorkoutLogsForWeek } from '../services/database';
 import { calculateUserMacros } from '../services/macroCalculator';
 import WeightChart from '../components/WeightChart';
 import WorkoutChart from '../components/WorkoutChart';
 import PopUpModal from '../components/PopUpModal';
 import AmbientBackground from '../components/AmbientBackground';
+import GlassCard from '../components/primitives/GlassCard';
+import LiquidButton from '../components/primitives/LiquidButton';
+import LiquidPill from '../components/primitives/LiquidPill';
+import NeuSegmented from '../components/primitives/NeuSegmented';
+import NeuInset from '../components/primitives/NeuInset';
 import { getLocalDateStr, addDaysToDateStr } from '../utils/dateUtils';
 
 export default function ProgressScreen() {
   const { user } = useAuth();
-  const { isDark, themeColors, glassStyles } = useTheme();
+  const { tokens, isDark } = useTheme();
   const [weightData, setWeightData] = useState(null);
   const [weeklyWorkouts, setWeeklyWorkouts] = useState([]);
   const [workoutMetric, setWorkoutMetric] = useState('calories'); // 'calories' | 'minutes'
@@ -110,6 +116,11 @@ export default function ProgressScreen() {
   const netChange = Math.round((currentWeight - startWeight) * 10) / 10;
   const targetWeight = user?.target_weight || 70;
 
+  // Calculate visual progress from start to target without changing computed values
+  const totalJourney = Math.abs(targetWeight - startWeight) || 1;
+  const coveredJourney = Math.abs(currentWeight - startWeight);
+  const progressRatio = Math.min(100, Math.max(0, Math.round((coveredJourney / totalJourney) * 100)));
+
   const macros = user ? calculateUserMacros({ ...user, weight: currentWeight }) : null;
   const timeline = macros?.timeline || {};
   const safety = macros?.safety || {};
@@ -122,7 +133,6 @@ export default function ProgressScreen() {
 
   return (
     <AmbientBackground style={styles.container}>
-      {/* PopUp Modal */}
       <PopUpModal
         visible={popUpConfig.visible}
         title={popUpConfig.title}
@@ -133,122 +143,227 @@ export default function ProgressScreen() {
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.metricsRow}>
-          <View style={[glassStyles.card, styles.metricCard]}>
-            <Text style={[styles.metricLabel, { color: themeColors.textSecondary }]}>Current Weight</Text>
-            <Text style={[styles.metricValue, { color: themeColors.textPrimary }]}>{currentWeight} <Text style={[styles.unitText, { color: themeColors.textSecondary }]}>kg</Text></Text>
-            <Text style={[styles.metricSub, { color: themeColors.textMuted }]}>Start: {startWeight}kg</Text>
-          </View>
-          <View style={[glassStyles.card, styles.metricCard]}>
-            <Text style={[styles.metricLabel, { color: themeColors.textSecondary }]}>Target Goal</Text>
-            <Text style={[styles.metricValue, { color: themeColors.primary }]}>{targetWeight} <Text style={[styles.unitText, { color: themeColors.textSecondary }]}>kg</Text></Text>
-            <Text style={[styles.metricSub, { color: themeColors.textMuted }]}>Net: {netChange > 0 ? `+${netChange}` : netChange}kg</Text>
-          </View>
-        </View>
+        <View style={styles.contentWrap}>
+          {/* Top Weight Metric Cards */}
+          <View style={styles.metricsRow}>
+            <GlassCard style={styles.metricCard}>
+              <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.metricLabel, { color: tokens.text.secondary }]}>Current Weight</Text>
+              <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.metricValue, { color: tokens.text.primary }]}>
+                {currentWeight} <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.unitText, { color: tokens.text.secondary }]}>kg</Text>
+              </Text>
+              <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.metricSub, { color: tokens.text.secondary }]}>
+                Start: {startWeight} kg
+              </Text>
+            </GlassCard>
 
-        <View style={styles.timelineBanner}>
-          <View style={styles.timelineIconCircle}><Ionicons name="flag-outline" size={21} color="#FBBF24" /></View>
-          <View style={styles.timelineInfo}>
-            <Text style={[styles.timelineTitle, { color: themeColors.textSecondary }]}>Goal Completion Projection</Text>
-            <Text style={[styles.timelineDateText, { color: themeColors.textPrimary }]}>Estimated Date: <Text style={styles.highlightDate}>{estimatedDate}</Text></Text>
-            <Text style={[styles.timelineSubText, { color: themeColors.textSecondary }]}>~{weeksRemaining} weeks remaining</Text>
+            <GlassCard style={styles.metricCard}>
+              <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.metricLabel, { color: tokens.text.secondary }]}>Target Goal</Text>
+              <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.metricValue, { color: tokens.primary }]}>
+                {targetWeight} <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.unitText, { color: tokens.text.secondary }]}>kg</Text>
+              </Text>
+              <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.metricSub, { color: tokens.text.secondary }]}>
+                Net: {netChange > 0 ? `+${netChange}` : netChange} kg
+              </Text>
+            </GlassCard>
           </View>
-        </View>
 
-        {safety.is_clamped && (
-          <View style={styles.safetyCard}>
-            <Ionicons name="shield-checkmark-outline" size={19} color="#60A5FA" />
-            <Text style={[styles.safetyText, { color: isDark ? '#93C5FD' : '#2563EB' }]}>{safety.warning}</Text>
-          </View>
-        )}
-
-        {/* Weekly Workout Trend Chart Card */}
-        <View style={[glassStyles.card, styles.chartCard]}>
-          <View style={styles.chartHeader}>
-            <View>
-              <Text style={[styles.chartTitle, { color: themeColors.textPrimary }]}>Weekly Workout Trend</Text>
-              <Text style={[styles.chartSub, { color: themeColors.textSecondary }]}>
-                7-day totals: {Math.round(totalWeeklyBurn)} kcal • {totalWeeklyMin} mins
+          {/* Visual Goal Journey Progress Track */}
+          <GlassCard subtle style={styles.journeyCard}>
+            <View style={styles.journeyHeader}>
+              <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.journeyLabel, { color: tokens.text.secondary }]}>
+                Weight Journey ({startWeight}kg → {targetWeight}kg)
+              </Text>
+              <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.journeyPct, { color: tokens.primary }]}>
+                {progressRatio}% to goal
               </Text>
             </View>
-            <View style={[styles.metricToggleRow, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)', borderColor: themeColors.cardBorderSubtle }]}>
-              <TouchableOpacity
-                style={[styles.toggleChip, workoutMetric === 'calories' && styles.activeToggleChip]}
-                onPress={() => setWorkoutMetric('calories')}
-              >
-                <Text style={[styles.toggleChipText, { color: workoutMetric === 'calories' ? '#FFFFFF' : themeColors.textSecondary }]}>kcal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.toggleChip, workoutMetric === 'minutes' && styles.activeToggleChip]}
-                onPress={() => setWorkoutMetric('minutes')}
-              >
-                <Text style={[styles.toggleChipText, { color: workoutMetric === 'minutes' ? '#FFFFFF' : themeColors.textSecondary }]}>mins</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-          {loading ? (
-            <ActivityIndicator size="large" color="#60A5FA" style={{ marginVertical: 38 }} />
-          ) : (
-            <WorkoutChart weeklyLogs={weeklyWorkouts} metric={workoutMetric} />
-          )}
-        </View>
+            <NeuInset radius={5} style={styles.journeyTrack}>
+              <View style={[styles.journeyFill, { width: `${progressRatio}%`, backgroundColor: tokens.primary }]} />
+            </NeuInset>
+          </GlassCard>
 
-        {/* Weight Trajectory Chart Card */}
-        <View style={[glassStyles.card, styles.chartCard]}>
-          <View style={styles.chartHeader}>
-            <View>
-              <Text style={[styles.chartTitle, { color: themeColors.textPrimary }]}>Weight Trajectory & Projection</Text>
-              <Text style={[styles.chartSub, { color: themeColors.textSecondary }]}>Actual vs projected goal timeline</Text>
+          {/* Goal Projection Banner */}
+          <GlassCard style={styles.timelineBanner}>
+            <View style={[styles.timelineIconCircle, { backgroundColor: isDark ? 'rgba(255, 184, 0, 0.20)' : 'rgba(224, 154, 0, 0.14)' }]}>
+              <Icon name="flag-outline" size={20} color={tokens.macros.carbs} />
             </View>
-            <TouchableOpacity style={styles.logBtn} onPress={() => setLogModalVisible(true)}>
-              <Ionicons name="add" size={15} color="#FFFFFF" />
-              <Text style={styles.logBtnText}>Log Weight</Text>
-            </TouchableOpacity>
-          </View>
-          {loading ? (
-            <ActivityIndicator size="large" color="#818CF8" style={{ marginVertical: 38 }} />
-          ) : (
-            <WeightChart logs={logs} targetWeight={targetWeight} projectedTrend={projectedTrend} />
-          )}
-        </View>
-
-        <View style={styles.historySection}>
-          <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Weight History</Text>
-          {logs.length > 0 ? (
-            [...logs].reverse().map(log => (
-              <View key={log.id} style={[glassStyles.cardSubtle, styles.historyRow]}>
-                <View style={styles.historyLeft}>
-                  <Ionicons name="scale-outline" size={19} color={themeColors.protein} />
-                  <View>
-                    <Text style={[styles.historyWeight, { color: themeColors.textPrimary }]}>{log.weight} kg</Text>
-                    <Text style={[styles.historyDate, { color: themeColors.textSecondary }]}>{log.logged_at}{log.notes ? ` • ${log.notes}` : ''}</Text>
-                  </View>
-                </View>
-                <TouchableOpacity onPress={() => handleDeleteWeight(log.id)}>
-                  <Ionicons name="trash-outline" size={17} color="#F87171" />
-                </TouchableOpacity>
+            <View style={styles.timelineInfo}>
+              <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.timelineTitle, { color: tokens.text.secondary }]}>
+                Goal Completion Projection
+              </Text>
+              <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.timelineDateText, { color: tokens.text.primary }]}>
+                Target Date: <Text style={{ color: tokens.macros.carbs }}>{estimatedDate}</Text>
+              </Text>
+              <View style={{ marginTop: 4 }}>
+                <LiquidPill color={tokens.macros.carbs}>
+                  ~{weeksRemaining} weeks remaining
+                </LiquidPill>
               </View>
-            ))
-          ) : (
-            <View style={[glassStyles.cardSubtle, styles.emptyCard]}><Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No weight entries yet.</Text></View>
+            </View>
+          </GlassCard>
+
+          {safety.is_clamped && (
+            <GlassCard subtle style={styles.safetyCard}>
+              <Icon name="shield-checkmark-outline" size={19} color={tokens.macros.protein} />
+              <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.safetyText, { color: tokens.macros.protein }]}>{safety.warning}</Text>
+            </GlassCard>
           )}
+
+          {/* Weekly Workout Trend Chart Card */}
+          <GlassCard style={styles.chartCard}>
+            <View style={styles.chartHeader}>
+              <View>
+                <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.chartTitle, { color: tokens.text.primary }]}>Weekly Workout Trend</Text>
+                <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.chartSub, { color: tokens.text.secondary }]}>
+                  7-day totals: {Math.round(totalWeeklyBurn)} kcal • {totalWeeklyMin} mins
+                </Text>
+              </View>
+              <NeuSegmented
+                options={[
+                  { value: 'calories', label: 'kcal' },
+                  { value: 'minutes', label: 'mins' },
+                ]}
+                value={workoutMetric}
+                onChange={setWorkoutMetric}
+                style={{ width: 130 }}
+              />
+            </View>
+            {loading ? (
+              <ActivityIndicator size="large" color={tokens.primary} style={{ marginVertical: 38 }} />
+            ) : (
+              <WorkoutChart weeklyLogs={weeklyWorkouts} metric={workoutMetric} />
+            )}
+          </GlassCard>
+
+          {/* Weight Trajectory Chart Card */}
+          <GlassCard style={styles.chartCard}>
+            <View style={styles.chartHeader}>
+              <View>
+                <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.chartTitle, { color: tokens.text.primary }]}>Weight Trajectory & Projection</Text>
+                <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.chartSub, { color: tokens.text.secondary }]}>Actual vs projected timeline</Text>
+              </View>
+              <LiquidButton
+                size="sm"
+                onPress={() => setLogModalVisible(true)}
+                icon="add"
+              >
+                Log Weight
+              </LiquidButton>
+            </View>
+            {loading ? (
+              <ActivityIndicator size="large" color={tokens.primary} style={{ marginVertical: 38 }} />
+            ) : (
+              <WeightChart logs={logs} targetWeight={targetWeight} projectedTrend={projectedTrend} />
+            )}
+          </GlassCard>
+
+          {/* Weight History Section */}
+          <View style={styles.historySection}>
+            <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.sectionTitle, { color: tokens.text.primary }]}>Weight History</Text>
+            {logs.length > 0 ? (
+              [...logs].reverse().map(log => (
+                <GlassCard subtle key={log.id} style={styles.historyRow}>
+                  <View style={styles.historyLeft}>
+                    <Icon name="scale-outline" size={19} color={tokens.macros.protein} />
+                    <View>
+                      <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.historyWeight, { color: tokens.text.primary }]}>{log.weight} kg</Text>
+                      <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.historyDate, { color: tokens.text.secondary }]}>
+                        {log.logged_at}{log.notes ? ` • ${log.notes}` : ''}
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleDeleteWeight(log.id)}
+                    style={[styles.deleteBtn, { backgroundColor: tokens.neumorphic.inset }]}
+                  >
+                    <Icon name="trash-outline" size={16} color={tokens.semantics.danger} />
+                  </TouchableOpacity>
+                </GlassCard>
+              ))
+            ) : (
+              <GlassCard subtle style={styles.emptyCard}>
+                <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.emptyText, { color: tokens.text.secondary }]}>No weight entries yet.</Text>
+              </GlassCard>
+            )}
+          </View>
         </View>
       </ScrollView>
 
+      {/* Log Weight Modal */}
       <Modal visible={logModalVisible} animationType="fade" transparent onRequestClose={() => setLogModalVisible(false)}>
-        <View style={[styles.modalOverlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.4)' }]}>
-          <View style={[glassStyles.modalContent, styles.modalContent]}>
+        <View style={[styles.modalOverlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.45)' }]}>
+          <View
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor: tokens.liquidGlass.fill,
+                borderColor: tokens.liquidGlass.rim,
+                ...(Platform.OS === 'web' ? {
+                  backdropFilter: `blur(${tokens.liquidGlass.blur}px)`,
+                  WebkitBackdropFilter: `blur(${tokens.liquidGlass.blur}px)`,
+                } : {}),
+              },
+            ]}
+          >
+            <View style={styles.dragHandle} />
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: themeColors.textPrimary }]}>Log Weight</Text>
-              <TouchableOpacity onPress={() => setLogModalVisible(false)}><Ionicons name="close" size={23} color={themeColors.textSecondary} /></TouchableOpacity>
+              <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.modalTitle, { color: tokens.text.primary }]}>Log Weight</Text>
+              <TouchableOpacity
+                onPress={() => setLogModalVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                style={[
+                  styles.modalCloseBtn,
+                  {
+                    backgroundColor: tokens.liquidGlass.fill,
+                    borderColor: tokens.liquidGlass.rim,
+                  }
+                ]}
+              >
+                <Icon name="close" size={20} color={tokens.text.primary} />
+              </TouchableOpacity>
             </View>
-            <Text style={[styles.fieldLabel, { color: themeColors.textPrimary }]}>Weight (kg)</Text>
-            <TextInput style={[glassStyles.input, { color: themeColors.textPrimary }]} placeholder="e.g. 74.5" placeholderTextColor={themeColors.placeholder} keyboardType="numeric" value={newWeight} onChangeText={setNewWeight} />
-            <Text style={[styles.fieldLabel, { color: themeColors.textPrimary }]}>Notes (optional)</Text>
-            <TextInput style={[glassStyles.input, { color: themeColors.textPrimary }]} placeholder="Morning weigh-in" placeholderTextColor={themeColors.placeholder} value={weightNote} onChangeText={setWeightNote} />
-            <TouchableOpacity style={styles.saveBtn} onPress={handleAddWeight} disabled={submitting}>
-              {submitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.saveBtnText}>Save Weight</Text>}
-            </TouchableOpacity>
+
+            <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.fieldLabel, { color: tokens.text.primary }]}>Weight (kg)</Text>
+            <TextInput
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: tokens.input.bg,
+                  borderColor: tokens.input.border,
+                  color: tokens.text.primary,
+                },
+              ]}
+              placeholder="e.g. 74.5"
+              placeholderTextColor={tokens.input.placeholder}
+              keyboardType="numeric"
+              value={newWeight}
+              onChangeText={setNewWeight}
+            />
+
+            <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.fieldLabel, { color: tokens.text.primary }]}>Notes (optional)</Text>
+            <TextInput
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: tokens.input.bg,
+                  borderColor: tokens.input.border,
+                  color: tokens.text.primary,
+                },
+              ]}
+              placeholder="Morning weigh-in"
+              placeholderTextColor={tokens.input.placeholder}
+              value={weightNote}
+              onChangeText={setWeightNote}
+            />
+
+            <LiquidButton
+              onPress={handleAddWeight}
+              disabled={submitting}
+              style={{ marginTop: 10 }}
+            >
+              {submitting ? 'Saving...' : 'Save Weight'}
+            </LiquidButton>
           </View>
         </View>
       </Modal>
@@ -258,93 +373,130 @@ export default function ProgressScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 100 },
-  metricsRow: { flexDirection: 'row', gap: 12, marginBottom: 14 },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 110,
+    alignItems: 'center',
+  },
+  contentWrap: {
+    width: '100%',
+    maxWidth: 520,
+  },
+  metricsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   metricCard: {
     flex: 1,
-    borderRadius: 20,
     padding: 15,
   },
-  metricLabel: { fontSize: 12, fontWeight: '600' },
-  metricValue: { fontSize: 21, fontWeight: '800', marginTop: 4 },
-  unitText: { fontSize: 11, fontWeight: '500' },
-  metricSub: { fontSize: 11, marginTop: 3 },
+  metricLabel: { fontSize: 12, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold' },
+  metricValue: { fontSize: 24, fontWeight: '700', fontFamily: 'SpaceGrotesk_700Bold', marginTop: 4, fontVariant: ['tabular-nums'], letterSpacing: -0.2 },
+  unitText: { fontSize: 12, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
+  metricSub: { fontSize: 12, fontWeight: '500', fontFamily: 'SpaceGrotesk_500Medium', marginTop: 4, fontVariant: ['tabular-nums'] },
+  journeyCard: {
+    padding: 14,
+    marginBottom: 14,
+  },
+  journeyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  journeyLabel: { fontSize: 12, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
+  journeyPct: { fontSize: 12, fontWeight: '700', fontFamily: 'SpaceGrotesk_700Bold', fontVariant: ['tabular-nums'] },
+  journeyTrack: { height: 8, borderRadius: 4 },
+  journeyFill: { height: '100%', borderRadius: 4 },
   timelineBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderRadius: 20,
     padding: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.35)',
-    marginBottom: 13,
+    marginBottom: 14,
     gap: 13,
-    ...(Platform.OS === 'web' ? {
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
-    } : {}),
   },
-  timelineIconCircle: { width: 42, height: 42, borderRadius: 12, backgroundColor: 'rgba(245, 158, 11, 0.25)', justifyContent: 'center', alignItems: 'center' },
+  timelineIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   timelineInfo: { flex: 1 },
-  timelineTitle: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
-  timelineDateText: { fontSize: 14, fontWeight: '700', marginTop: 2 },
-  highlightDate: { color: '#FBBF24' },
-  timelineSubText: { fontSize: 11, marginTop: 2 },
+  timelineTitle: { fontSize: 12, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', textTransform: 'uppercase', letterSpacing: 0.6 },
+  timelineDateText: { fontSize: 14, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold', marginTop: 2 },
   safetyCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.35)',
-    borderRadius: 16,
-    padding: 11,
+    padding: 12,
     marginBottom: 14,
     gap: 9,
-    ...(Platform.OS === 'web' ? {
-      backdropFilter: 'blur(12px)',
-      WebkitBackdropFilter: 'blur(12px)',
-    } : {}),
   },
-  safetyText: { fontSize: 11, flex: 1, lineHeight: 15 },
+  safetyText: { fontSize: 12, flex: 1, lineHeight: 17, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium' },
   chartCard: {
-    borderRadius: 22,
-    padding: 17,
-    marginBottom: 18,
+    padding: 16,
+    marginBottom: 16,
   },
-  chartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  chartTitle: { fontSize: 15, fontWeight: '700' },
-  chartSub: { fontSize: 11 },
-  metricToggleRow: { flexDirection: 'row', borderRadius: 10, padding: 2, borderWidth: 1 },
-  toggleChip: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 },
-  activeToggleChip: { backgroundColor: '#3B82F6' },
-  toggleChipText: { fontSize: 11, fontWeight: '600' },
-  activeToggleText: { color: '#FFFFFF', fontWeight: '700' },
-  logBtn: { backgroundColor: '#6366F1', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 11, paddingVertical: 7, borderRadius: 10, gap: 3 },
-  logBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
-  historySection: { gap: 9 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
+  chartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  chartTitle: { fontSize: 18, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', letterSpacing: -0.15 },
+  chartSub: { fontSize: 12, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium', marginTop: 2 },
+  historySection: { gap: 8, marginTop: 4 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', letterSpacing: -0.15, marginBottom: 6 },
   historyRow: {
-    borderRadius: 16,
-    padding: 13,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   historyLeft: { flexDirection: 'row', alignItems: 'center', gap: 11 },
-  historyWeight: { fontSize: 14, fontWeight: '700' },
-  historyDate: { fontSize: 11 },
-  emptyCard: { padding: 18, borderRadius: 16, alignItems: 'center' },
-  emptyText: { fontSize: 13 },
+  historyWeight: { fontSize: 15, fontWeight: '700', fontFamily: 'SpaceGrotesk_700Bold', fontVariant: ['tabular-nums'] },
+  historyDate: { fontSize: 12, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium', marginTop: 2 },
+  deleteBtn: {
+    padding: 7,
+    borderRadius: 8,
+  },
+  emptyCard: { padding: 18, alignItems: 'center' },
+  emptyText: { fontSize: 13, fontFamily: 'PlusJakartaSans_500Medium' },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalContent: {
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
     padding: 20,
-    gap: 11,
+    gap: 10,
   },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 },
-  modalTitle: { fontSize: 17, fontWeight: '700' },
-  fieldLabel: { fontSize: 13, fontWeight: '600' },
-  saveBtn: { backgroundColor: '#6366F1', borderRadius: 14, paddingVertical: 13, alignItems: 'center', marginTop: 7 },
-  saveBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  dragHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(150, 150, 150, 0.4)',
+    alignSelf: 'center',
+    marginBottom: 6,
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  modalTitle: { fontSize: 20, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', letterSpacing: -0.15 },
+  modalCloseBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...(Platform.OS === 'web' ? {
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      outlineStyle: 'none',
+      cursor: 'pointer',
+    } : {}),
+  },
+  fieldLabel: { fontSize: 12, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', marginTop: 4 },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 14,
+    fontFamily: 'PlusJakartaSans_500Medium',
+  },
 });

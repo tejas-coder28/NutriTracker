@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateSmartSuggestion } from '../services/aiService';
 import { getLocalDateStr } from '../utils/dateUtils';
 import { useTheme } from '../context/ThemeContext';
+import GlassCard from './primitives/GlassCard';
+import Icon from './ui/Icon';
 
 const CACHE_KEY = 'NUTRITRACK_SMART_NUDGE_CACHE';
 
@@ -17,13 +18,12 @@ export default function SmartSuggestionCard({
   waterGoal = 8,
   goalType = 'fat_loss',
 }) {
-  const { isDark, themeColors, glassStyles } = useTheme();
+  const { tokens, isDark } = useTheme();
   const [suggestion, setSuggestion] = useState('');
   const [dismissed, setDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const todayStr = getLocalDateStr();
-
   const stateHash = `${todayStr}_${netCalories}_${workoutCount}_${waterGlasses}_${goalType}`;
 
   useEffect(() => {
@@ -34,7 +34,6 @@ export default function SmartSuggestionCard({
     try {
       setLoading(true);
 
-      // Check cache first
       const cachedDataRaw = await AsyncStorage.getItem(CACHE_KEY);
       if (cachedDataRaw) {
         const cached = JSON.parse(cachedDataRaw);
@@ -45,7 +44,6 @@ export default function SmartSuggestionCard({
         }
       }
 
-      // Generate new suggestion using Gemini / fallback
       const text = await generateSmartSuggestion({
         netCalories,
         targetCalories,
@@ -59,7 +57,6 @@ export default function SmartSuggestionCard({
 
       setSuggestion(text);
 
-      // Save to cache
       await AsyncStorage.setItem(
         CACHE_KEY,
         JSON.stringify({ text, date: todayStr, stateHash })
@@ -75,30 +72,63 @@ export default function SmartSuggestionCard({
   if (dismissed || !suggestion) return null;
 
   return (
-    <View style={[glassStyles.card, s.card]}>
-      <View style={s.header}>
-        <View style={s.titleRow}>
-          <View style={[s.iconWrap, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : 'rgba(217, 119, 6, 0.12)', borderColor: isDark ? 'rgba(245, 158, 11, 0.35)' : 'rgba(217, 119, 6, 0.30)' }]}>
-            <Ionicons name="sparkles" size={16} color={isDark ? '#FBBF24' : '#D97706'} />
+    <GlassCard
+      style={[
+        styles.card,
+        {
+          borderColor: isDark ? 'rgba(255, 184, 0, 0.35)' : 'rgba(224, 154, 0, 0.28)',
+          ...(Platform.OS === 'web' ? {
+            boxShadow: `0 4px 20px ${isDark ? 'rgba(255, 184, 0, 0.12)' : 'rgba(224, 154, 0, 0.08)'}`,
+          } : {}),
+        },
+      ]}
+    >
+      <View style={styles.header}>
+        <View style={styles.titleRow}>
+          <View
+            style={[
+              styles.iconWrap,
+              {
+                backgroundColor: isDark ? 'rgba(255, 184, 0, 0.18)' : 'rgba(224, 154, 0, 0.12)',
+                borderColor: isDark ? 'rgba(255, 184, 0, 0.40)' : 'rgba(224, 154, 0, 0.25)',
+              },
+            ]}
+          >
+            <Icon name="sparkles" size={15} color={tokens.macros.carbs} />
           </View>
-          <Text style={[s.title, { color: isDark ? '#FBBF24' : '#D97706' }]}>Smart AI Nudge</Text>
+          <Text
+            allowFontScaling={true}
+            maxFontSizeMultiplier={1.3}
+            style={[styles.title, { color: tokens.macros.carbs }]}
+          >
+            AI Smart Nudge
+          </Text>
         </View>
 
-        <TouchableOpacity onPress={() => setDismissed(true)} style={s.closeBtn}>
-          <Ionicons name="close" size={18} color={themeColors.textMuted} />
+        <TouchableOpacity
+          onPress={() => setDismissed(true)}
+          style={[styles.closeBtn, Platform.OS === 'web' && { outlineStyle: 'none', cursor: 'pointer' }]}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss Nudge"
+        >
+          <Icon name="close" size={17} color={tokens.text.secondary} />
         </TouchableOpacity>
       </View>
 
-      <Text style={[s.suggestionText, { color: themeColors.textPrimary }]}>{suggestion}</Text>
-    </View>
+      <Text
+        allowFontScaling={true}
+        maxFontSizeMultiplier={1.3}
+        style={[styles.suggestionText, { color: tokens.text.primary }]}
+      >
+        {suggestion}
+      </Text>
+    </GlassCard>
   );
 }
 
-const s = StyleSheet.create({
+const styles = StyleSheet.create({
   card: {
-    borderRadius: 20,
     padding: 15,
-    borderColor: 'rgba(245, 158, 11, 0.35)',
     marginBottom: 16,
     gap: 8,
   },
@@ -116,25 +146,24 @@ const s = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.35)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
-    color: '#FBBF24',
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
   closeBtn: {
-    padding: 3,
+    padding: 4,
   },
   suggestionText: {
     fontSize: 13,
-    lineHeight: 19,
+    lineHeight: 20,
     fontWeight: '500',
+    fontFamily: 'PlusJakartaSans_500Medium',
   },
 });

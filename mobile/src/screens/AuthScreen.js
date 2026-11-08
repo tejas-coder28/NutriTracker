@@ -9,14 +9,17 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Image,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import AmbientBackground from '../components/AmbientBackground';
+import GlassCard from '../components/primitives/GlassCard';
+import LiquidButton from '../components/primitives/LiquidButton';
+import NeuSegmented from '../components/primitives/NeuSegmented';
+import NeuInset from '../components/primitives/NeuInset';
+import Icon from '../components/ui/Icon';
 
-// Inline SVG-free Google logo using text + colours
+// Inline Google Logo icon
 function GoogleLogo({ size = 18 }) {
   return (
     <View style={[googleLogoStyles.circle, { width: size, height: size, borderRadius: size / 2 }]}>
@@ -35,26 +38,26 @@ const googleLogoStyles = StyleSheet.create({
   letter: {
     fontWeight: '700',
     color: '#4285F4',
-    lineHeight: undefined,
   },
 });
 
 export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const { login, register, signInWithGoogle, authError } = useAuth();
-  const { isDark, themeColors, glassStyles } = useTheme();
+  const { isDark, tokens } = useTheme();
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [localError, setLocalError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Form Fields
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleTabSwitch = (loginState) => {
-    setIsLogin(loginState);
+  const handleTabSwitch = (val) => {
+    setIsLogin(val === 'login');
     setLocalError(null);
     setSuccessMsg(null);
   };
@@ -100,7 +103,6 @@ export default function AuthScreen() {
     setGoogleLoading(true);
     try {
       await signInWithGoogle();
-      // Navigation is handled by AppNavigator reacting to auth state
     } catch (err) {
       setLocalError(err.message || 'Google Sign-In failed. Please try again.');
     } finally {
@@ -110,11 +112,6 @@ export default function AuthScreen() {
 
   const displayError = localError || authError;
 
-  const dividerColor = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
-  const googleBtnBg = isDark ? 'rgba(255,255,255,0.07)' : '#FFFFFF';
-  const googleBtnBorder = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)';
-  const googleBtnText = themeColors.textPrimary;
-
   return (
     <AmbientBackground style={styles.fill}>
       <KeyboardAvoidingView
@@ -122,129 +119,202 @@ export default function AuthScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          {/* Header Branding */}
-          <View style={styles.header}>
-            <View style={[styles.logoBadge, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.35)' }]}>
-              <Ionicons name="sparkles" size={28} color="#10B981" />
+          <View style={styles.formContainer}>
+            {/* Header Branding */}
+            <View style={styles.header}>
+              <View
+                style={[
+                  styles.logoBadge,
+                  {
+                    backgroundColor: isDark ? 'rgba(16, 232, 160, 0.18)' : 'rgba(0, 179, 119, 0.12)',
+                    borderColor: tokens.primary,
+                    ...(Platform.OS === 'web' ? {
+                      boxShadow: `0 0 24px ${tokens.primaryGlow}`,
+                    } : {}),
+                  },
+                ]}
+              >
+                <Icon name="sparkles" size={28} color={tokens.primary} />
+              </View>
+              <Text
+                allowFontScaling={true}
+                maxFontSizeMultiplier={1.3}
+                style={[styles.title, { color: tokens.text.primary }]}
+              >
+                NutriTracker AI
+              </Text>
+              <Text
+                allowFontScaling={true}
+                maxFontSizeMultiplier={1.3}
+                style={[styles.subtitle, { color: tokens.text.secondary }]}
+              >
+                AI-powered macro & weight tracker
+              </Text>
             </View>
-            <Text style={[styles.title, { color: themeColors.textPrimary }]}>NutriTrack AI</Text>
-            <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>Personalized On-Device AI Macro &amp; Weight Tracker</Text>
-          </View>
 
-          {/* Tab Toggle */}
-          <View style={[styles.tabContainer, { backgroundColor: isDark ? '#18181B' : 'rgba(0,0,0,0.06)' }]}>
-            <TouchableOpacity
-              style={[styles.tabButton, isLogin && [styles.activeTab, { backgroundColor: isDark ? '#27272A' : '#FFFFFF' }]]}
-              onPress={() => handleTabSwitch(true)}
-            >
-              <Text style={[styles.tabText, { color: themeColors.textMuted }, isLogin && styles.activeTabText]}>Log In</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tabButton, !isLogin && [styles.activeTab, { backgroundColor: isDark ? '#27272A' : '#FFFFFF' }]]}
-              onPress={() => handleTabSwitch(false)}
-            >
-              <Text style={[styles.tabText, { color: themeColors.textMuted }, !isLogin && styles.activeTabText]}>Register</Text>
-            </TouchableOpacity>
-          </View>
+            {/* Neumorphic Segmented Tab Toggle */}
+            <NeuSegmented
+              options={[
+                { value: 'login', label: 'Log In' },
+                { value: 'register', label: 'Register' },
+              ]}
+              value={isLogin ? 'login' : 'register'}
+              onChange={handleTabSwitch}
+              style={{ marginBottom: 16 }}
+            />
 
-          {successMsg && (
-            <View style={styles.successBanner}>
-              <Ionicons name="checkmark-circle" size={18} color="#10B981" />
-              <Text style={styles.successText}>{successMsg}</Text>
-            </View>
-          )}
-
-          {displayError && (
-            <View style={styles.errorBanner}>
-              <Ionicons name="alert-circle" size={18} color="#EF4444" />
-              <Text style={styles.errorText}>{displayError}</Text>
-            </View>
-          )}
-
-          <View style={[glassStyles.card, styles.card]}>
-            {!isLogin && (
-              <View style={styles.fieldGroup}>
-                <Text style={[styles.label, { color: themeColors.textSecondary }]}>Full Name</Text>
-                <TextInput
-                  style={[glassStyles.input, { color: themeColors.textPrimary }]}
-                  placeholder="Tejas Muralidhar"
-                  placeholderTextColor={themeColors.placeholder}
-                  value={name}
-                  onChangeText={(t) => { setName(t); setLocalError(null); }}
-                />
+            {successMsg && (
+              <View
+                style={[
+                  styles.successBanner,
+                  {
+                    backgroundColor: isDark ? 'rgba(16, 232, 160, 0.15)' : 'rgba(0, 179, 119, 0.12)',
+                    borderColor: tokens.semantics.success,
+                  },
+                ]}
+              >
+                <Icon name="checkmark-circle" size={18} color={tokens.semantics.success} />
+                <Text
+                  allowFontScaling={true}
+                  maxFontSizeMultiplier={1.3}
+                  style={[styles.successText, { color: tokens.semantics.success }]}
+                >
+                  {successMsg}
+                </Text>
               </View>
             )}
 
-            <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: themeColors.textSecondary }]}>Email Address</Text>
-              <TextInput
-                style={[glassStyles.input, { color: themeColors.textPrimary }]}
-                placeholder="tejas@example.com"
-                placeholderTextColor={themeColors.placeholder}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                value={email}
-                onChangeText={(t) => { setEmail(t); setLocalError(null); setSuccessMsg(null); }}
-              />
-            </View>
+            {displayError && (
+              <View
+                style={[
+                  styles.errorBanner,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 77, 77, 0.15)' : 'rgba(224, 58, 58, 0.12)',
+                    borderColor: tokens.semantics.danger,
+                  },
+                ]}
+              >
+                <Icon name="alert-circle" size={18} color={tokens.semantics.danger} />
+                <Text
+                  allowFontScaling={true}
+                  maxFontSizeMultiplier={1.3}
+                  style={[styles.errorText, { color: tokens.semantics.danger }]}
+                >
+                  {displayError}
+                </Text>
+              </View>
+            )}
 
-            <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: themeColors.textSecondary }]}>Password</Text>
-              <TextInput
-                style={[glassStyles.input, { color: themeColors.textPrimary }]}
-                placeholder="••••••••"
-                placeholderTextColor={themeColors.placeholder}
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                value={password}
-                onChangeText={(t) => { setPassword(t); setLocalError(null); setSuccessMsg(null); }}
-              />
-            </View>
-
-            <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={loading || googleLoading}>
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <>
-                  <Text style={styles.submitText}>{isLogin ? 'Log In' : 'Create Account'}</Text>
-                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-                </>
-              )}
-            </TouchableOpacity>
-
-            {/* ── OR Divider ──────────────────────────────────────────────── */}
-            <View style={styles.dividerRow}>
-              <View style={[styles.dividerLine, { backgroundColor: dividerColor }]} />
-              <Text style={[styles.dividerText, { color: themeColors.textMuted }]}>or</Text>
-              <View style={[styles.dividerLine, { backgroundColor: dividerColor }]} />
-            </View>
-
-            {/* ── Continue with Google ─────────────────────────────────────── */}
-            <TouchableOpacity
-              style={[
-                styles.googleBtn,
-                {
-                  backgroundColor: googleBtnBg,
-                  borderColor: googleBtnBorder,
-                },
-              ]}
-              onPress={handleGoogleSignIn}
-              disabled={loading || googleLoading}
-              activeOpacity={0.75}
-            >
-              {googleLoading ? (
-                <ActivityIndicator color="#4285F4" size="small" />
-              ) : (
-                <>
-                  <GoogleLogo size={20} />
-                  <Text style={[styles.googleBtnText, { color: googleBtnText }]}>
-                    Continue with Google
+            {/* Glass Card Container */}
+            <GlassCard style={styles.card}>
+              {!isLogin && (
+                <View style={styles.fieldGroup}>
+                  <Text
+                    allowFontScaling={true}
+                    maxFontSizeMultiplier={1.3}
+                    style={[styles.label, { color: tokens.text.secondary }]}
+                  >
+                    Full Name
                   </Text>
-                </>
+                  <NeuInset radius={12} style={styles.neuInputWrap}>
+                    <TextInput
+                      style={[styles.inputField, { color: tokens.text.primary }]}
+                      placeholder="Tejas Muralidhar"
+                      placeholderTextColor={tokens.input.placeholder}
+                      value={name}
+                      onChangeText={(t) => { setName(t); setLocalError(null); }}
+                    />
+                  </NeuInset>
+                </View>
               )}
-            </TouchableOpacity>
+
+              <View style={styles.fieldGroup}>
+                <Text
+                  allowFontScaling={true}
+                  maxFontSizeMultiplier={1.3}
+                  style={[styles.label, { color: tokens.text.secondary }]}
+                >
+                  Email Address
+                </Text>
+                <NeuInset radius={12} style={styles.neuInputWrap}>
+                  <TextInput
+                    style={[styles.inputField, { color: tokens.text.primary }]}
+                    placeholder="tejas@example.com"
+                    placeholderTextColor={tokens.input.placeholder}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    value={email}
+                    onChangeText={(t) => { setEmail(t); setLocalError(null); setSuccessMsg(null); }}
+                  />
+                </NeuInset>
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text
+                  allowFontScaling={true}
+                  maxFontSizeMultiplier={1.3}
+                  style={[styles.label, { color: tokens.text.secondary }]}
+                >
+                  Password
+                </Text>
+                <NeuInset radius={12} style={[styles.neuInputWrap, styles.passwordRow]}>
+                  <TextInput
+                    style={[styles.inputField, { color: tokens.text.primary, flex: 1 }]}
+                    placeholder="••••••••"
+                    placeholderTextColor={tokens.input.placeholder}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    value={password}
+                    onChangeText={(t) => { setPassword(t); setLocalError(null); setSuccessMsg(null); }}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeBtn}
+                    accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                  >
+                    <Icon
+                      name={showPassword ? "eye-off-outline" : "eye-outline"}
+                      size={18}
+                      color={tokens.text.secondary}
+                    />
+                  </TouchableOpacity>
+                </NeuInset>
+              </View>
+
+              {/* Liquid-Glass Primary Submit Button */}
+              <LiquidButton
+                onPress={handleSubmit}
+                disabled={loading || googleLoading}
+                style={{ marginTop: 8 }}
+              >
+                {loading ? 'Please wait...' : (isLogin ? 'Log In' : 'Create Account')}
+              </LiquidButton>
+
+              {/* OR Divider */}
+              <View style={styles.dividerRow}>
+                <View style={[styles.dividerLine, { backgroundColor: tokens.neumorphic.border }]} />
+                <Text
+                  allowFontScaling={true}
+                  maxFontSizeMultiplier={1.3}
+                  style={[styles.dividerText, { color: tokens.text.secondary }]}
+                >
+                  or
+                </Text>
+                <View style={[styles.dividerLine, { backgroundColor: tokens.neumorphic.border }]} />
+              </View>
+
+              {/* Glass Google Sign-In Button */}
+              <LiquidButton
+                variant="glass"
+                onPress={handleGoogleSignIn}
+                disabled={loading || googleLoading}
+                icon={<GoogleLogo size={19} />}
+              >
+                {googleLoading ? 'Connecting...' : 'Continue with Google'}
+              </LiquidButton>
+            </GlassCard>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -255,13 +325,18 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   scrollContent: {
-    padding: 20,
+    padding: 16,
     justifyContent: 'center',
+    alignItems: 'center',
     minHeight: '100%',
+  },
+  formContainer: {
+    width: '100%',
+    maxWidth: 420, // Centered form max ~420px
   },
   header: {
     alignItems: 'center',
-    marginVertical: 24,
+    marginBottom: 20,
   },
   logoBadge: {
     width: 60,
@@ -270,104 +345,83 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
-    borderWidth: 1,
+    borderWidth: 1.5,
   },
   title: {
     fontSize: 26,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    letterSpacing: -0.2,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 14,
+    fontFamily: 'PlusJakartaSans_500Medium',
     marginTop: 4,
     textAlign: 'center',
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    borderRadius: 14,
-    padding: 4,
-    marginBottom: 16,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  activeTab: {},
-  tabText: {
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  activeTabText: {
-    color: '#10B981',
   },
   successBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#10B98115',
     borderWidth: 1,
-    borderColor: '#10B98140',
     padding: 12,
     borderRadius: 12,
-    marginBottom: 16,
+    marginBottom: 14,
     gap: 8,
   },
   successText: {
-    color: '#34D399',
     fontSize: 13,
     flex: 1,
     fontWeight: '600',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
   },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EF444415',
     borderWidth: 1,
-    borderColor: '#EF444440',
     padding: 12,
     borderRadius: 12,
-    marginBottom: 16,
+    marginBottom: 14,
     gap: 8,
   },
   errorText: {
-    color: '#F87171',
     fontSize: 13,
     flex: 1,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    lineHeight: 18,
   },
   card: {
-    borderRadius: 20,
     padding: 20,
     gap: 14,
   },
   fieldGroup: {
-    gap: 6,
+    gap: 5,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  submitBtn: {
-    backgroundColor: '#10B981',
-    borderRadius: 14,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 10,
-  },
-  submitText: {
-    color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    letterSpacing: 0,
   },
-  // ── Divider ────────────────────────────────────────────────────────────────
+  neuInputWrap: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  eyeBtn: {
+    padding: 4,
+  },
+  inputField: {
+    fontSize: 15,
+    fontFamily: 'PlusJakartaSans_500Medium',
+  },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginVertical: 2,
+    marginVertical: 4,
   },
   dividerLine: {
     flex: 1,
@@ -375,28 +429,7 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     fontSize: 12,
-    fontWeight: '500',
-    letterSpacing: 0.5,
-  },
-  // ── Google Button ─────────────────────────────────────────────────────────
-  googleBtn: {
-    borderRadius: 14,
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  googleBtnText: {
-    fontSize: 15,
     fontWeight: '600',
-    letterSpacing: 0.1,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
   },
 });

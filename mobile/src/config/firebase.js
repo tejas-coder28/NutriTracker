@@ -22,22 +22,20 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, browserLocalPersistence, setPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "",
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "nutritracker-6aa92.firebaseapp.com",
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "nutritracker-6aa92",
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "nutritracker-6aa92.firebasestorage.app",
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "",
-  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || ""
+  apiKey: "AIzaSyA6Y0o74H8kL_BN3qsRGuPMy5k71P21-AY",
+  authDomain: "nutritracker-6aa92.firebaseapp.com",
+  projectId: "nutritracker-6aa92",
+  storageBucket: "nutritracker-6aa92.firebasestorage.app",
+  messagingSenderId: "659175129139",
+  appId: "1:659175129139:web:42a84e9c6451c723a16346",
+  measurementId: "G-SBW9TYRNRQ"
 };
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
 
 // Persist auth session in localStorage so Capacitor WebView
 // remembers the user after the app is closed and reopened.

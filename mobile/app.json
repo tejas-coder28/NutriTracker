@@ -4,7 +4,6 @@
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "platforms": ["web", "android", "ios"],
     "icon": "./assets/icon.png",
     "scheme": "mobile",
     "userInterfaceStyle": "automatic",
@@ -20,7 +19,6 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "bundler": "metro",
       "output": "static",
       "favicon": "./assets/icon.png"
     },

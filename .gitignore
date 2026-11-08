@@ -30,3 +30,9 @@ Thumbs.db
 .idea/
 .claude/
 *.log
+
+# APK binaries & backups
+*.apk
+.git_backup/
+*.sqlite
+

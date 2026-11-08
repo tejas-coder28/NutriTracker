@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { getWaterForDate, setWaterForDate } from '../services/database';
 import { getLocalDateStr } from '../utils/dateUtils';
 import { useTheme } from '../context/ThemeContext';
+import GlassCard from './primitives/GlassCard';
+import LiquidButton from './primitives/LiquidButton';
+import NeuInset from './primitives/NeuInset';
+import Icon from './ui/Icon';
 
 export default function WaterWidget({ dateStr, waterGoal = 8, onWaterUpdated }) {
-  const { isDark, themeColors, glassStyles } = useTheme();
+  const { tokens, isDark } = useTheme();
   const [glasses, setGlasses] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -29,6 +33,10 @@ export default function WaterWidget({ dateStr, waterGoal = 8, onWaterUpdated }) 
   };
 
   const handleAddGlass = async (delta) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (_) {}
+
     const nextVal = Math.max(0, glasses + delta);
     setGlasses(nextVal);
     try {
@@ -41,72 +49,130 @@ export default function WaterWidget({ dateStr, waterGoal = 8, onWaterUpdated }) 
 
   const goal = Math.max(1, Number(waterGoal) || 8);
   const pct = Math.min(100, Math.round((glasses / goal) * 100));
-
-  // Render up to goal glasses
   const iconsToShow = Math.min(12, Math.max(goal, 8));
 
+  const waterColor = tokens.macros.water;
+  const waterGlow = tokens.macros.waterGlow;
+
   return (
-    <View style={[glassStyles.card, s.card]}>
-      <View style={s.header}>
-        <View style={s.titleRow}>
-          <View style={s.iconWrap}>
-            <Ionicons name="water" size={18} color="#60A5FA" />
+    <GlassCard style={styles.card}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.titleRow}>
+          <View
+            style={[
+              styles.iconWrap,
+              {
+                backgroundColor: isDark ? 'rgba(56, 189, 248, 0.15)' : 'rgba(14, 165, 233, 0.12)',
+                borderColor: isDark ? 'rgba(56, 189, 248, 0.35)' : 'rgba(14, 165, 233, 0.25)',
+              },
+            ]}
+          >
+            <Icon name="water" size={18} color={waterColor} />
           </View>
           <View>
-            <Text style={[s.title, { color: themeColors.textPrimary }]}>Water Intake</Text>
-            <Text style={[s.subText, { color: themeColors.textSecondary }]}>{glasses} of {goal} glasses ({pct}%)</Text>
+            <Text
+              allowFontScaling={true}
+              maxFontSizeMultiplier={1.3}
+              style={[styles.title, { color: tokens.text.primary }]}
+            >
+              Water Intake
+            </Text>
+            <Text
+              allowFontScaling={true}
+              maxFontSizeMultiplier={1.3}
+              style={[styles.subText, { color: tokens.text.secondary }]}
+            >
+              {glasses} of {goal} glasses ({pct}%)
+            </Text>
           </View>
         </View>
 
-        <View style={s.controlsRow}>
+        {/* Stepper Controls */}
+        <View style={styles.controlsRow}>
+          {/* Neumorphic Minus Stepper */}
           <TouchableOpacity
-            style={[s.miniBtn, glasses === 0 && { opacity: 0.3 }]}
+            style={[
+              styles.stepperBtn,
+              {
+                backgroundColor: tokens.neumorphic.inset,
+                borderColor: tokens.neumorphic.border,
+                opacity: glasses === 0 ? 0.35 : 1,
+              },
+            ]}
             onPress={() => handleAddGlass(-1)}
             disabled={glasses === 0}
           >
-            <Ionicons name="remove" size={16} color={glasses === 0 ? themeColors.textMuted : '#60A5FA'} />
+            <Icon name="remove" size={15} color={tokens.text.primary} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={s.addBtn} onPress={() => handleAddGlass(1)}>
-            <Ionicons name="add" size={16} color="#fff" />
-            <Text style={s.addBtnText}>+1 Glass</Text>
-          </TouchableOpacity>
+          {/* Liquid Glass +1 Button */}
+          <LiquidButton
+            size="sm"
+            onPress={() => handleAddGlass(1)}
+            icon="add"
+            style={styles.addBtn}
+          >
+            +1 Glass
+          </LiquidButton>
         </View>
       </View>
 
-      {/* Progress Bar */}
-      <View style={[s.progressTrack, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)' }]}>
-        <View style={[s.progressFill, { width: `${pct}%` }]} />
-      </View>
+      {/* Inset Progress Bar */}
+      <NeuInset radius={4} style={styles.track}>
+        <View
+          style={[
+            styles.fill,
+            {
+              width: `${pct}%`,
+              backgroundColor: waterColor,
+              ...(Platform.OS === 'web' ? {
+                boxShadow: `0 0 10px ${waterGlow}`,
+                transition: 'width 0.4s ease',
+              } : {}),
+            },
+          ]}
+        />
+      </NeuInset>
 
-      {/* Glass Icons Grid */}
-      <View style={s.glassRow}>
+      {/* Neumorphic Droplets Row */}
+      <View style={styles.dropletRow}>
         {Array.from({ length: iconsToShow }).map((_, idx) => {
           const isFilled = idx < glasses;
           return (
             <TouchableOpacity
               key={idx}
-              style={s.glassIconTouch}
+              activeOpacity={0.75}
+              style={[
+                styles.dropletSlot,
+                {
+                  backgroundColor: isFilled
+                    ? (isDark ? 'rgba(56, 189, 248, 0.25)' : 'rgba(14, 165, 233, 0.20)')
+                    : tokens.neumorphic.inset,
+                  borderColor: isFilled ? waterColor : tokens.neumorphic.border,
+                  ...(isFilled && Platform.OS === 'web'
+                    ? { boxShadow: `0 0 8px ${waterGlow}` }
+                    : {}),
+                },
+              ]}
               onPress={() => handleAddGlass(isFilled && idx === glasses - 1 ? -1 : (idx + 1) - glasses)}
             >
-              <Ionicons
+              <Icon
                 name={isFilled ? 'water' : 'water-outline'}
-                size={22}
-                color={isFilled ? '#60A5FA' : themeColors.textMuted}
+                size={18}
+                color={isFilled ? waterColor : tokens.text.muted}
               />
             </TouchableOpacity>
           );
         })}
       </View>
-    </View>
+    </GlassCard>
   );
 }
 
-const s = StyleSheet.create({
+const styles = StyleSheet.create({
   card: {
-    borderRadius: 20,
     padding: 16,
-    borderColor: 'rgba(59, 130, 246, 0.35)',
     marginBottom: 16,
     gap: 12,
   },
@@ -124,70 +190,63 @@ const s = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.35)',
   },
   title: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    letterSpacing: -0.15,
   },
   subText: {
     fontSize: 12,
+    fontWeight: '500',
+    fontFamily: 'SpaceGrotesk_500Medium',
     marginTop: 1,
+    fontVariant: ['tabular-nums'],
   },
   controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  miniBtn: {
-    width: 32,
-    height: 32,
+  stepperBtn: {
+    width: 34,
+    height: 34,
     borderRadius: 10,
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.35)',
-  },
-  miniBtnDisabled: {
-    opacity: 0.3,
   },
   addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#3B82F6',
-    paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 10,
+    paddingHorizontal: 12,
+    minHeight: 34,
   },
-  addBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  progressTrack: {
-    height: 6,
-    borderRadius: 3,
+  track: {
+    height: 8,
+    borderRadius: 4,
     overflow: 'hidden',
   },
-  progressFill: {
+  fill: {
     height: '100%',
-    backgroundColor: '#60A5FA',
-    borderRadius: 3,
+    borderRadius: 4,
   },
-  glassRow: {
+  dropletRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
     justifyContent: 'space-between',
     marginTop: 2,
   },
-  glassIconTouch: {
-    padding: 2,
+  dropletSlot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

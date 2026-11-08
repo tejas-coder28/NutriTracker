@@ -3,20 +3,80 @@ import { View, StyleSheet, Platform } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 
 export default function AmbientBackground({ children, style }) {
-  const { isDark, themeColors } = useTheme();
+  const { tokens, isDark } = useTheme();
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.bg }, style]}>
+    <View style={[styles.container, { backgroundColor: tokens.bg }, style]}>
       <View style={styles.blobContainer} pointerEvents="none">
-        {/* Blob 1: Green/Teal glow top-left */}
-        <View style={[styles.blobGreen, !isDark && styles.blobGreenLight]} />
-        {/* Blob 2: Purple glow top-right / middle */}
-        <View style={[styles.blobPurple, !isDark && styles.blobPurpleLight]} />
-        {/* Blob 3: Amber/Orange glow mid-bottom */}
-        <View style={[styles.blobOrange, !isDark && styles.blobOrangeLight]} />
-        {/* Blob 4: Cyan/Blue glow bottom-right */}
-        <View style={[styles.blobCyan, !isDark && styles.blobCyanLight]} />
+        {/* Blob 1: Mint glow top-left */}
+        <View
+          style={[
+            styles.blob,
+            styles.blobTopLeft,
+            {
+              backgroundColor: tokens.blobs.blob1,
+              ...(Platform.OS === 'web' ? {
+                filter: `blur(${tokens.blobs.blur}px)`,
+                WebkitFilter: `blur(${tokens.blobs.blur}px)`,
+              } : {
+                opacity: isDark ? 0.35 : 0.45,
+              }),
+            },
+          ]}
+        />
+
+        {/* Blob 2: Cyan / Sky glow top-right */}
+        <View
+          style={[
+            styles.blob,
+            styles.blobTopRight,
+            {
+              backgroundColor: tokens.blobs.blob2,
+              ...(Platform.OS === 'web' ? {
+                filter: `blur(${tokens.blobs.blur}px)`,
+                WebkitFilter: `blur(${tokens.blobs.blur}px)`,
+              } : {
+                opacity: isDark ? 0.3 : 0.4,
+              }),
+            },
+          ]}
+        />
+
+        {/* Blob 3: Violet / Lavender glow mid-bottom */}
+        <View
+          style={[
+            styles.blob,
+            styles.blobMidBottom,
+            {
+              backgroundColor: tokens.blobs.blob3,
+              ...(Platform.OS === 'web' ? {
+                filter: `blur(${tokens.blobs.blur}px)`,
+                WebkitFilter: `blur(${tokens.blobs.blur}px)`,
+              } : {
+                opacity: isDark ? 0.25 : 0.35,
+              }),
+            },
+          ]}
+        />
+
+        {/* Blob 4: Amber / Peach glow bottom-right */}
+        <View
+          style={[
+            styles.blob,
+            styles.blobBottomRight,
+            {
+              backgroundColor: tokens.blobs.blob4,
+              ...(Platform.OS === 'web' ? {
+                filter: `blur(${tokens.blobs.blur}px)`,
+                WebkitFilter: `blur(${tokens.blobs.blur}px)`,
+              } : {
+                opacity: isDark ? 0.25 : 0.35,
+              }),
+            },
+          ]}
+        />
       </View>
+
       {children}
     </View>
   );
@@ -32,100 +92,32 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     zIndex: 0,
   },
-  blobGreen: {
+  blob: {
     position: 'absolute',
+    borderRadius: 200,
+  },
+  blobTopLeft: {
     top: -60,
     left: -80,
     width: 380,
     height: 380,
-    borderRadius: 190,
-    backgroundColor: 'rgba(16, 185, 129, 0.22)',
-    ...(Platform.OS === 'web' ? {
-      filter: 'blur(80px)',
-      WebkitFilter: 'blur(80px)',
-    } : {
-      opacity: 0.35,
-    }),
   },
-  blobGreenLight: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    ...(Platform.OS === 'web' ? {
-      filter: 'blur(100px)',
-      WebkitFilter: 'blur(100px)',
-    } : {
-      opacity: 0.25,
-    }),
-  },
-  blobPurple: {
-    position: 'absolute',
-    top: '25%',
+  blobTopRight: {
+    top: '20%',
     right: -100,
     width: 400,
     height: 400,
-    borderRadius: 200,
-    backgroundColor: 'rgba(139, 92, 246, 0.20)',
-    ...(Platform.OS === 'web' ? {
-      filter: 'blur(90px)',
-      WebkitFilter: 'blur(90px)',
-    } : {
-      opacity: 0.3,
-    }),
   },
-  blobPurpleLight: {
-    backgroundColor: 'rgba(139, 92, 246, 0.12)',
-    ...(Platform.OS === 'web' ? {
-      filter: 'blur(100px)',
-      WebkitFilter: 'blur(100px)',
-    } : {
-      opacity: 0.2,
-    }),
-  },
-  blobOrange: {
-    position: 'absolute',
+  blobMidBottom: {
     bottom: '22%',
     left: -80,
-    width: 350,
-    height: 350,
-    borderRadius: 175,
-    backgroundColor: 'rgba(245, 158, 11, 0.18)',
-    ...(Platform.OS === 'web' ? {
-      filter: 'blur(85px)',
-      WebkitFilter: 'blur(85px)',
-    } : {
-      opacity: 0.25,
-    }),
+    width: 360,
+    height: 360,
   },
-  blobOrangeLight: {
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
-    ...(Platform.OS === 'web' ? {
-      filter: 'blur(100px)',
-      WebkitFilter: 'blur(100px)',
-    } : {
-      opacity: 0.18,
-    }),
-  },
-  blobCyan: {
-    position: 'absolute',
+  blobBottomRight: {
     bottom: -60,
-    right: -50,
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    backgroundColor: 'rgba(6, 182, 212, 0.18)',
-    ...(Platform.OS === 'web' ? {
-      filter: 'blur(75px)',
-      WebkitFilter: 'blur(75px)',
-    } : {
-      opacity: 0.25,
-    }),
-  },
-  blobCyanLight: {
-    backgroundColor: 'rgba(6, 182, 212, 0.12)',
-    ...(Platform.OS === 'web' ? {
-      filter: 'blur(90px)',
-      WebkitFilter: 'blur(90px)',
-    } : {
-      opacity: 0.18,
-    }),
+    right: -60,
+    width: 340,
+    height: 340,
   },
 });

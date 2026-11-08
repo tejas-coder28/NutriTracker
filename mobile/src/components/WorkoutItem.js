@@ -1,56 +1,108 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { WORKOUT_TYPES } from '../services/workoutService';
 import { formatLoggedTime } from '../utils/dateUtils';
 import { useTheme } from '../context/ThemeContext';
+import GlassCard from './primitives/GlassCard';
+import Icon from './ui/Icon';
 
 export default function WorkoutItem({ item, onDelete, onEdit }) {
-  const { isDark, themeColors, glassStyles } = useTheme();
+  const { tokens, isDark } = useTheme();
   const workoutInfo = WORKOUT_TYPES.find(w => w.id === item.workout_type) || { icon: 'fitness-outline', label: item.workout_type };
   const timeStr = formatLoggedTime(item.created_at || item.logged_time);
 
   return (
-    <View style={[glassStyles.card, styles.card]}>
+    <GlassCard style={styles.card}>
       <View style={styles.leftCol}>
-        <View style={styles.iconCircle}>
-          <Ionicons name={workoutInfo.icon} size={20} color="#10B981" />
+        <View
+          style={[
+            styles.iconCircle,
+            {
+              backgroundColor: isDark ? 'rgba(16, 232, 160, 0.15)' : 'rgba(0, 179, 119, 0.12)',
+              borderColor: isDark ? 'rgba(16, 232, 160, 0.35)' : 'rgba(0, 179, 119, 0.25)',
+            },
+          ]}
+        >
+          <Icon name={workoutInfo.icon} size={20} color={tokens.primary} />
         </View>
         <View style={styles.textGroup}>
-          <Text style={[styles.workoutName, { color: themeColors.textPrimary }]}>{item.workout_type}</Text>
-          <Text style={[styles.workoutMeta, { color: themeColors.textSecondary }]}>
+          <Text
+            allowFontScaling={true}
+            maxFontSizeMultiplier={1.3}
+            style={[styles.workoutName, { color: tokens.text.primary }]}
+          >
+            {item.workout_type}
+          </Text>
+          <Text
+            allowFontScaling={true}
+            maxFontSizeMultiplier={1.3}
+            style={[styles.workoutMeta, { color: tokens.text.secondary }]}
+          >
             {item.duration_min} min • {item.intensity || 'moderate'}{timeStr ? ` • ${timeStr}` : ''}
           </Text>
         </View>
       </View>
 
       <View style={styles.rightCol}>
-        <View style={styles.burnBadge}>
-          <Ionicons name="flame" size={14} color="#F87171" />
-          <Text style={styles.burnText}>{Math.round(item.calories_burned || 0)} kcal</Text>
+        <View
+          style={[
+            styles.burnBadge,
+            {
+              backgroundColor: isDark ? 'rgba(255, 77, 77, 0.15)' : 'rgba(224, 58, 58, 0.12)',
+              borderColor: isDark ? 'rgba(255, 77, 77, 0.35)' : 'rgba(224, 58, 58, 0.25)',
+            },
+          ]}
+        >
+          <Icon name="flame" size={13} color={tokens.macros.calories} />
+          <Text
+            allowFontScaling={true}
+            maxFontSizeMultiplier={1.3}
+            style={[styles.burnText, { color: tokens.macros.calories }]}
+          >
+            {Math.round(item.calories_burned || 0)} kcal
+          </Text>
         </View>
 
         <View style={styles.actionsRow}>
           {onEdit && (
-            <TouchableOpacity onPress={() => onEdit(item)} style={[styles.iconBtn, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)', borderColor: themeColors.cardBorderSubtle }]}>
-              <Ionicons name="pencil" size={16} color={themeColors.protein} />
+            <TouchableOpacity
+              onPress={() => onEdit(item)}
+              style={[
+                styles.iconBtn,
+                {
+                  backgroundColor: tokens.neumorphic.inset,
+                  borderColor: tokens.neumorphic.border,
+                  ...(Platform.OS === 'web' ? { outlineStyle: 'none', cursor: 'pointer' } : {}),
+                },
+              ]}
+            >
+              <Icon name="pencil" size={15} color={tokens.macros.protein} />
             </TouchableOpacity>
           )}
           {onDelete && (
-            <TouchableOpacity onPress={() => onDelete(item.id)} style={[styles.iconBtn, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)', borderColor: themeColors.cardBorderSubtle }]}>
-              <Ionicons name="trash-outline" size={16} color="#F87171" />
+            <TouchableOpacity
+              onPress={() => onDelete(item.id)}
+              style={[
+                styles.iconBtn,
+                {
+                  backgroundColor: tokens.neumorphic.inset,
+                  borderColor: tokens.neumorphic.border,
+                  ...(Platform.OS === 'web' ? { outlineStyle: 'none', cursor: 'pointer' } : {}),
+                },
+              ]}
+            >
+              <Icon name="trash-outline" size={15} color={tokens.semantics.danger} />
             </TouchableOpacity>
           )}
         </View>
       </View>
-    </View>
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 18,
-    padding: 14,
+    padding: 13,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -66,11 +118,9 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.35)',
   },
   textGroup: {
     flex: 1,
@@ -92,17 +142,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.35)',
   },
   burnText: {
-    color: '#F87171',
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
   },
   actionsRow: {
     flexDirection: 'row',

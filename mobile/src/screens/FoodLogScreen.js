@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { getFoodLogsForDate, deleteFoodLog } from '../services/database';
 import { getLocalDateStr, addDaysToDateStr, isFutureDate } from '../utils/dateUtils';
 import FoodLogItem from '../components/FoodLogItem';
@@ -8,10 +8,15 @@ import AddFoodModal from '../components/AddFoodModal';
 import EditFoodModal from '../components/EditFoodModal';
 import PopUpModal from '../components/PopUpModal';
 import AmbientBackground from '../components/AmbientBackground';
+import GlassCard from '../components/primitives/GlassCard';
+import LiquidButton from '../components/primitives/LiquidButton';
+import LiquidPill from '../components/primitives/LiquidPill';
+import NeuInset from '../components/primitives/NeuInset';
+import Icon from '../components/ui/Icon';
 import { useTheme } from '../context/ThemeContext';
 
 export default function FoodLogScreen() {
-  const { isDark, themeColors, glassStyles } = useTheme();
+  const { tokens, isDark } = useTheme();
   const todayStr = getLocalDateStr();
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [logsData, setLogsData] = useState(null);
@@ -41,9 +46,9 @@ export default function FoodLogScreen() {
     if (days > 0 && isFutureDate(target)) {
       return; // Block future date navigation
     }
+    try { Haptics.selectionAsync(); } catch (_) {}
     setSelectedDate(target);
   };
-
 
   const handleEditFood = (item) => {
     setEditingItem(item);
@@ -153,9 +158,17 @@ export default function FoodLogScreen() {
   const totals = logsData?.totals || { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 };
   const logs = logsData?.logs || [];
 
+  // Generate 7-day strip (from 6 days ago up to today)
+  const weekDays = [-6, -5, -4, -3, -2, -1, 0].map(offset => {
+    const dStr = addDaysToDateStr(todayStr, offset);
+    const dateObj = new Date(dStr);
+    const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+    const dayNum = dStr.split('-')[2];
+    return { dateStr: dStr, dayName, dayNum };
+  });
+
   return (
     <AmbientBackground style={styles.container}>
-      {/* Universal PopUp Modal */}
       <PopUpModal
         visible={popUpConfig.visible}
         title={popUpConfig.title}
@@ -165,59 +178,216 @@ export default function FoodLogScreen() {
         onClose={() => setPopUpConfig({ ...popUpConfig, visible: false })}
       />
 
-      <View style={[styles.dateStrip, { backgroundColor: isDark ? 'rgba(24, 25, 32, 0.75)' : 'rgba(255, 255, 255, 0.75)', borderBottomColor: themeColors.cardBorderSubtle }]}>
-        <TouchableOpacity style={styles.navArrow} onPress={() => changeDateByDays(-1)}>
-          <Ionicons name="chevron-back" size={20} color={themeColors.textPrimary} />
-        </TouchableOpacity>
-        <View style={styles.dateLabelContainer}>
-          <Ionicons name="calendar-outline" size={16} color={themeColors.primary} />
-          <Text style={[styles.dateLabelText, { color: themeColors.textPrimary }]}>{selectedDate === todayStr ? `Today (${selectedDate})` : selectedDate}</Text>
-        </View>
-        <TouchableOpacity
-          style={[styles.navArrow, selectedDate >= todayStr && { opacity: 0.25 }]}
-          disabled={selectedDate >= todayStr}
-          onPress={() => changeDateByDays(1)}
-        >
-          <Ionicons name="chevron-forward" size={20} color={selectedDate >= todayStr ? themeColors.textMuted : themeColors.textPrimary} />
-        </TouchableOpacity>
-      </View>
-
-
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={[glassStyles.card, styles.summaryCard]}>
-          <Text style={[styles.summaryTitle, { color: themeColors.textSecondary }]}>Day Macro Summary</Text>
-          <View style={styles.totalsRow}>
-            <View style={styles.totalStat}><Text style={[styles.totalVal, { color: themeColors.textPrimary }]}>{totals.calories}</Text><Text style={[styles.totalSub, { color: themeColors.textSecondary }]}>kcal</Text></View>
-            <View style={[styles.divider, { backgroundColor: themeColors.cardBorderSubtle }]} />
-            <View style={styles.totalStat}><Text style={[styles.totalVal,{color: themeColors.protein}]}>{totals.protein}g</Text><Text style={[styles.totalSub, { color: themeColors.textSecondary }]}>Protein</Text></View>
-            <View style={[styles.divider, { backgroundColor: themeColors.cardBorderSubtle }]} />
-            <View style={styles.totalStat}><Text style={[styles.totalVal,{color: themeColors.carbs}]}>{totals.carbs}g</Text><Text style={[styles.totalSub, { color: themeColors.textSecondary }]}>Carbs</Text></View>
-            <View style={[styles.divider, { backgroundColor: themeColors.cardBorderSubtle }]} />
-            <View style={styles.totalStat}><Text style={[styles.totalVal,{color: themeColors.fat}]}>{totals.fat}g</Text><Text style={[styles.totalSub, { color: themeColors.textSecondary }]}>Fat</Text></View>
-          </View>
-        </View>
+        <View style={styles.contentWrap}>
+          {/* Liquid Date Header Pill with Arrows */}
+          <View style={styles.dateHeaderRow}>
+            <TouchableOpacity
+              style={[
+                styles.navArrow,
+                {
+                  backgroundColor: tokens.liquidGlass.fill,
+                  borderColor: tokens.liquidGlass.rim,
+                },
+              ]}
+              onPress={() => changeDateByDays(-1)}
+            >
+              <Icon name="chevron-back" size={18} color={tokens.text.primary} />
+            </TouchableOpacity>
 
-        <View style={styles.listHeader}>
-          <Text style={[styles.listHeaderTitle, { color: themeColors.textPrimary }]}>Meal Records</Text>
-          <TouchableOpacity style={styles.addInlineBtn} onPress={() => setModalVisible(true)}>
-            <Ionicons name="add-circle" size={18} color={themeColors.primary} />
-            <Text style={[styles.addInlineText, { color: themeColors.primary }]}>Log Meal</Text>
-          </TouchableOpacity>
-        </View>
+            <View
+              style={[
+                styles.datePill,
+                {
+                  backgroundColor: tokens.liquidGlass.fill,
+                  borderColor: tokens.liquidGlass.rim,
+                  ...(Platform.OS === 'web' ? {
+                    backdropFilter: `blur(${tokens.liquidGlass.blur}px)`,
+                    WebkitBackdropFilter: `blur(${tokens.liquidGlass.blur}px)`,
+                    boxShadow: isDark
+                      ? '0 4px 16px rgba(0, 0, 0, 0.4)'
+                      : '0 4px 14px rgba(15, 23, 42, 0.08)',
+                  } : {}),
+                },
+              ]}
+            >
+              <Icon name="calendar-outline" size={15} color={tokens.primary} />
+              <Text
+                allowFontScaling={true}
+                maxFontSizeMultiplier={1.3}
+                style={[styles.dateLabelText, { color: tokens.text.primary }]}
+              >
+                {selectedDate === todayStr ? `Today • ${selectedDate}` : selectedDate}
+              </Text>
+            </View>
 
-        {loading ? (
-          <ActivityIndicator size="large" color="#10B981" style={{ marginTop: 40 }} />
-        ) : logs.length > 0 ? (
-          logs.map(item => <FoodLogItem key={item.id} item={item} onDelete={handleDeleteFood} onEdit={handleEditFood} />)
-        ) : (
-          <View style={[glassStyles.cardSubtle, styles.emptyContainer]}>
-            <Ionicons name="journal-outline" size={40} color={themeColors.textMuted} />
-            <Text style={[styles.emptyTitle, { color: themeColors.textPrimary }]}>No meals logged for this date</Text>
-            <Text style={[styles.emptySub, { color: themeColors.textSecondary }]}>Tap "Log Meal" to add entries using text or photo AI.</Text>
+            <TouchableOpacity
+              style={[
+                styles.navArrow,
+                {
+                  backgroundColor: tokens.liquidGlass.fill,
+                  borderColor: tokens.liquidGlass.rim,
+                  opacity: selectedDate >= todayStr ? 0.3 : 1,
+                },
+              ]}
+              disabled={selectedDate >= todayStr}
+              onPress={() => changeDateByDays(1)}
+            >
+              <Icon
+                name="chevron-forward"
+                size={18}
+                color={selectedDate >= todayStr ? tokens.text.muted : tokens.text.primary}
+              />
+            </TouchableOpacity>
           </View>
-        )}
+
+          {/* Swipeable Week Date Chips */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.weekStrip}
+          >
+            {weekDays.map(item => {
+              const isSelected = item.dateStr === selectedDate;
+              return (
+                <TouchableOpacity
+                  key={item.dateStr}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    try { Haptics.selectionAsync(); } catch (_) {}
+                    setSelectedDate(item.dateStr);
+                  }}
+                  style={[
+                    styles.dayChip,
+                    {
+                      backgroundColor: isSelected
+                        ? (isDark ? 'rgba(16, 232, 160, 0.20)' : 'rgba(0, 179, 119, 0.15)')
+                        : tokens.neumorphic.inset,
+                      borderColor: isSelected
+                        ? tokens.primary
+                        : tokens.neumorphic.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    allowFontScaling={true}
+                    maxFontSizeMultiplier={1.3}
+                    style={[
+                      styles.dayChipName,
+                      { color: isSelected ? tokens.primary : tokens.text.secondary },
+                    ]}
+                  >
+                    {item.dayName}
+                  </Text>
+                  <Text
+                    allowFontScaling={true}
+                    maxFontSizeMultiplier={1.3}
+                    style={[
+                      styles.dayChipNum,
+                      { color: isSelected ? tokens.primary : tokens.text.primary },
+                    ]}
+                  >
+                    {item.dayNum}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* Day Macro Summary Card */}
+          <GlassCard style={styles.summaryCard}>
+            <Text
+              allowFontScaling={true}
+              maxFontSizeMultiplier={1.3}
+              style={[styles.summaryTitle, { color: tokens.text.secondary }]}
+            >
+              Day Macro Summary
+            </Text>
+            <View style={styles.totalsRow}>
+              <View style={styles.totalStat}>
+                <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.totalVal, { color: tokens.text.primary }]}>
+                  {Math.round(totals.calories)}
+                </Text>
+                <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.totalSub, { color: tokens.text.secondary }]}>kcal</Text>
+              </View>
+
+              <View style={[styles.divider, { backgroundColor: tokens.neumorphic.border }]} />
+
+              <View style={styles.totalStat}>
+                <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.totalVal, { color: tokens.macros.protein }]}>
+                  {Math.round(totals.protein)}g
+                </Text>
+                <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.totalSub, { color: tokens.text.secondary }]}>Protein</Text>
+              </View>
+
+              <View style={[styles.divider, { backgroundColor: tokens.neumorphic.border }]} />
+
+              <View style={styles.totalStat}>
+                <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.totalVal, { color: tokens.macros.carbs }]}>
+                  {Math.round(totals.carbs)}g
+                </Text>
+                <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.totalSub, { color: tokens.text.secondary }]}>Carbs</Text>
+              </View>
+
+              <View style={[styles.divider, { backgroundColor: tokens.neumorphic.border }]} />
+
+              <View style={styles.totalStat}>
+                <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.totalVal, { color: tokens.macros.fat }]}>
+                  {Math.round(totals.fat)}g
+                </Text>
+                <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.totalSub, { color: tokens.text.secondary }]}>Fat</Text>
+              </View>
+            </View>
+          </GlassCard>
+
+          {/* Meals List Header with Liquid-Glass Log Button */}
+          <View style={styles.listHeader}>
+            <Text allowFontScaling={true} maxFontSizeMultiplier={1.3} style={[styles.listHeaderTitle, { color: tokens.text.primary }]}>
+              Meal Records
+            </Text>
+            <LiquidButton
+              size="sm"
+              onPress={() => setModalVisible(true)}
+              icon="add"
+            >
+              Log Meal
+            </LiquidButton>
+          </View>
+
+          {loading ? (
+            <ActivityIndicator size="large" color={tokens.primary} style={{ marginTop: 40 }} />
+          ) : logs.length > 0 ? (
+            logs.map(item => (
+              <FoodLogItem
+                key={item.id}
+                item={item}
+                onDelete={handleDeleteFood}
+                onEdit={handleEditFood}
+              />
+            ))
+          ) : (
+            <GlassCard subtle style={styles.emptyContainer}>
+              <Icon name="journal-outline" size={40} color={tokens.text.muted} />
+              <Text
+                allowFontScaling={true}
+                maxFontSizeMultiplier={1.3}
+                style={[styles.emptyTitle, { color: tokens.text.primary }]}
+              >
+                No meals logged for this date
+              </Text>
+              <Text
+                allowFontScaling={true}
+                maxFontSizeMultiplier={1.3}
+                style={[styles.emptySub, { color: tokens.text.secondary }]}
+              >
+                Tap "Log Meal" to add entries using text or photo AI.
+              </Text>
+            </GlassCard>
+          )}
+        </View>
       </ScrollView>
 
+      {/* Modals */}
       <AddFoodModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
@@ -236,44 +406,133 @@ export default function FoodLogScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex:1 },
-  dateStrip: {
-    flexDirection:'row',
-    alignItems:'center',
-    justifyContent:'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    ...(Platform.OS === 'web' ? {
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
-    } : {}),
+  container: { flex: 1 },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 110,
+    alignItems: 'center',
   },
-  navArrow: { padding: 6 },
-  dateLabelContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dateLabelText: { fontSize: 16, fontWeight: '700' },
-  scrollContent: { padding: 20, paddingBottom: 100 },
+  contentWrap: {
+    width: '100%',
+    maxWidth: 520,
+  },
+  dateHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+    gap: 8,
+  },
+  navArrow: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  datePill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 8,
+  },
+  dateLabelText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    letterSpacing: 0,
+  },
+  weekStrip: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingBottom: 14,
+  },
+  dayChip: {
+    width: 56,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  dayChipName: {
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  dayChipNum: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontVariant: ['tabular-nums'],
+  },
   summaryCard: {
-    borderRadius: 22,
     padding: 18,
-    marginBottom: 20,
+    marginBottom: 18,
   },
-  summaryTitle: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 },
-  totalsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
+  summaryTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 12,
+  },
+  totalsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
   totalStat: { alignItems: 'center' },
-  totalVal: { fontSize: 18, fontWeight: '800' },
-  totalSub: { fontSize: 11, marginTop: 2 },
+  totalVal: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontVariant: ['tabular-nums'],
+  },
+  totalSub: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    marginTop: 2,
+  },
   divider: { width: 1, height: 28 },
-  listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  listHeaderTitle: { fontSize: 17, fontWeight: '700' },
-  addInlineBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  addInlineText: { fontWeight: '700', fontSize: 14 },
+  listHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  listHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    letterSpacing: -0.15,
+  },
   emptyContainer: {
-    borderRadius: 18,
     padding: 30,
     alignItems: 'center',
     marginTop: 10,
   },
-  emptyTitle: { fontSize: 15, fontWeight: '600', marginTop: 12 },
-  emptySub: { fontSize: 12, textAlign: 'center', marginTop: 4 },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    marginTop: 12,
+  },
+  emptySub: {
+    fontSize: 13,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 19,
+  },
 });

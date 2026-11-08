@@ -1,13 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import Svg, { Rect, Line, Text as SvgText } from 'react-native-svg';
+import Svg, { Rect, Line, Text as SvgText, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { getLocalDateStr, addDaysToDateStr } from '../utils/dateUtils';
 import { useTheme } from '../context/ThemeContext';
+import GlassCard from './primitives/GlassCard';
 
-const screenWidth = Dimensions.get('window').width - 40;
+const screenWidth = Math.min(480, Dimensions.get('window').width - 32);
 
 export default function WorkoutChart({ weeklyLogs = [], metric = 'calories', height = 200 }) {
-  const { isDark, themeColors } = useTheme();
+  const { tokens, isDark } = useTheme();
 
   // Build 7 days array ending today
   const days = [];
@@ -32,10 +33,10 @@ export default function WorkoutChart({ weeklyLogs = [], metric = 'calories', hei
   const values = days.map(d => metric === 'minutes' ? d.minutes : d.calories);
   const maxVal = Math.max(100, Math.ceil(Math.max(...values, 10) / 50) * 50);
 
-  const paddingLeft = 35;
+  const paddingLeft = 40;
   const paddingRight = 15;
-  const paddingTop = 20;
-  const paddingBottom = 30;
+  const paddingTop = 22;
+  const paddingBottom = 34;
 
   const chartWidth = screenWidth - paddingLeft - paddingRight;
   const chartHeight = height - paddingTop - paddingBottom;
@@ -44,8 +45,21 @@ export default function WorkoutChart({ weeklyLogs = [], metric = 'calories', hei
   const stepX = chartWidth / 7;
 
   return (
-    <View style={s.container}>
+    <View style={styles.container}>
       <Svg width={screenWidth} height={height}>
+        <Defs>
+          {/* Today gradient */}
+          <LinearGradient id="todayBarGrad" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor={tokens.primaryLight} />
+            <Stop offset="100%" stopColor={tokens.primary} />
+          </LinearGradient>
+          {/* Normal bar gradient */}
+          <LinearGradient id="normalBarGrad" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor={tokens.macros.protein} />
+            <Stop offset="100%" stopColor={tokens.macros.water} />
+          </LinearGradient>
+        </Defs>
+
         {/* Horizontal grid lines */}
         {[0, 0.5, 1].map((ratio, i) => {
           const val = Math.round(ratio * maxVal);
@@ -57,15 +71,16 @@ export default function WorkoutChart({ weeklyLogs = [], metric = 'calories', hei
                 y1={yPos}
                 x2={screenWidth - paddingRight}
                 y2={yPos}
-                stroke={isDark ? "#27272A" : "#E4E4E7"}
+                stroke={tokens.neumorphic.border}
                 strokeWidth="1"
                 strokeDasharray="4 4"
               />
               <SvgText
                 x={paddingLeft - 6}
                 y={yPos + 4}
-                fill={themeColors.textSecondary}
-                fontSize="9"
+                fill={tokens.text.secondary}
+                fontSize="12"
+                fontFamily="SpaceGrotesk_600SemiBold"
                 textAnchor="end"
               >
                 {val}{metric === 'minutes' ? 'm' : ''}
@@ -89,14 +104,19 @@ export default function WorkoutChart({ weeklyLogs = [], metric = 'calories', hei
                 y={y}
                 width={barWidth}
                 height={Math.max(barH, 3)}
-                rx={4}
-                fill={val > 0 ? (isToday ? '#10B981' : '#3B82F6') : (isDark ? '#27272A' : '#E4E4E7')}
+                rx={5}
+                fill={
+                  val > 0
+                    ? (isToday ? 'url(#todayBarGrad)' : 'url(#normalBarGrad)')
+                    : tokens.neumorphic.inset
+                }
               />
               <SvgText
                 x={x + barWidth / 2}
-                y={height - 10}
-                fill={isToday ? '#10B981' : themeColors.textSecondary}
-                fontSize="10"
+                y={height - 8}
+                fill={isToday ? tokens.primary : tokens.text.secondary}
+                fontSize="12"
+                fontFamily="PlusJakartaSans_600SemiBold"
                 fontWeight={isToday ? 'bold' : 'normal'}
                 textAnchor="middle"
               >
@@ -106,8 +126,9 @@ export default function WorkoutChart({ weeklyLogs = [], metric = 'calories', hei
                 <SvgText
                   x={x + barWidth / 2}
                   y={y - 5}
-                  fill={isToday ? (isDark ? '#34D399' : '#059669') : themeColors.textPrimary}
-                  fontSize="9"
+                  fill={isToday ? tokens.primary : tokens.text.primary}
+                  fontSize="12"
+                  fontFamily="SpaceGrotesk_700Bold"
                   fontWeight="bold"
                   textAnchor="middle"
                 >
@@ -122,7 +143,7 @@ export default function WorkoutChart({ weeklyLogs = [], metric = 'calories', hei
   );
 }
 
-const s = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     marginVertical: 6,
